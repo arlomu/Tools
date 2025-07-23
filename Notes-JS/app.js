@@ -8,7 +8,7 @@ const bcrypt = require('bcryptjs');
 const session = require('express-session');
 
 const app = express();
-const PORT = 3000;
+const PORT = 80;
 const notesFilePath = path.join(__dirname, 'notes.json');
 const usersFilePath = path.join(__dirname, 'users.json');
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -346,8 +346,8 @@ app.post('/login', async (req, res) => {
 
 app.post('/register', async (req, res) => {
     const { username, password } = req.body;
-    if (!username || !password || password.length < 4) {
-        return res.redirect('/register?error=Benutzername und ein Passwort mit mind. 4 Zeichen sind erforderlich.');
+    if (!username || !password || password.length < 5) {
+        return res.redirect('/register?error=Benutzername und ein Passwort mit mind. 5 Zeichen sind erforderlich.');
     }
     const users = await readData(usersFilePath);
     if (users.find(u => u.username === username)) {
@@ -373,7 +373,7 @@ app.get('/logout', (req, res) => {
 
 // User Settings API Route
 app.put('/api/user/settings', isAuthenticated, async (req, res) => {
-    const { currentPassword, newUsername, newPassword } = req.body;
+    const { currentPassword, newUsername, newPassword, confirmNewPassword } = req.body;
     const users = await readData(usersFilePath);
     const userIndex = users.findIndex(u => u.id === req.session.userId);
     if (userIndex === -1) {
@@ -392,8 +392,11 @@ app.put('/api/user/settings', isAuthenticated, async (req, res) => {
     }
 
     if (newPassword) {
-        if (newPassword.length < 4) {
-            return res.status(400).json({ success: false, error: 'Das neue Passwort muss mindestens 4 Zeichen lang sein.' });
+        if (newPassword.length < 5) {
+            return res.status(400).json({ success: false, error: 'Das neue Passwort muss mindestens 5 Zeichen lang sein.' });
+        }
+        if (newPassword !== confirmNewPassword) {
+            return res.status(400).json({ success: false, error: 'Neues Passwort und Bestätigung stimmen nicht überein.' });
         }
         users[userIndex].password = await bcrypt.hash(newPassword, 10);
     }
@@ -427,7 +430,8 @@ app.get('/api/notes/:id', isAuthenticated, async (req, res) => {
 
 app.post('/api/notes', isAuthenticated, upload.array('images', 5), async (req, res) => {
     try {
-        const { content, tags, color } = req.body;
+        // Removed 'tags' from destructuring
+        const { content, color } = req.body;
         if (!content) {
             return res.status(400).json({ success: false, error: 'Inhalt ist erforderlich.' });
         }
@@ -435,7 +439,6 @@ app.post('/api/notes', isAuthenticated, upload.array('images', 5), async (req, r
             id: uuidv4(),
             userId: req.session.userId,
             content: content,
-            tags: tags ? tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
             images: req.files ? req.files.map(file => file.filename) : [],
             created: new Date().toISOString(),
             isPinned: false,
@@ -453,14 +456,14 @@ app.post('/api/notes', isAuthenticated, upload.array('images', 5), async (req, r
 app.put('/api/notes/:id', isAuthenticated, upload.array('newImages', 5), async (req, res) => {
     try {
         const { id } = req.params;
-        const { content, tags, color } = req.body;
+        // Removed 'tags' from destructuring
+        const { content, color } = req.body;
         const notes = await readData(notesFilePath);
         const noteIndex = notes.findIndex(note => note.id === id && note.userId === req.session.userId);
         if (noteIndex === -1) {
             return res.status(404).json({ success: false, error: 'Notiz nicht gefunden.' });
         }
         notes[noteIndex].content = content ?? notes[noteIndex].content;
-        notes[noteIndex].tags = tags ? tags.split(',').map(tag => tag.trim()).filter(Boolean) : notes[noteIndex].tags;
         notes[noteIndex].color = color ?? notes[noteIndex].color;
 
         if (req.files && req.files.length > 0) {
@@ -562,16 +565,19 @@ function generateMainHTML(username) {
         }
         body {
             font-family: 'Poppins', sans-serif;
-            background: var(--light-bg);
-            color: var(--light-text-color);
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
             transition: background-color 0.3s ease, color 0.3s ease;
             margin: 0;
+            display: flex;
+            flex-direction: column; /* Stack elements vertically */
+            min-height: 100vh; /* Ensure full viewport height */
         }
         body.dark-mode {
             background: var(--dark-bg);
             color: var(--dark-text-color);
         }
-        body.dark-mode .note, body.dark-mode .modal-content, body.dark-mode .filter-tags-container {
+        body.dark-mode .note, body.dark-mode .modal-content {
             background: var(--dark-card-bg);
             border-color: var(--dark-border-color);
             box-shadow: var(--shadow-dark);
@@ -581,62 +587,112 @@ function generateMainHTML(username) {
             color: var(--dark-text-color);
             border: 1px solid var(--dark-border-color);
         }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+        /* Header (moved outside container) */
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 1rem 2rem;
-            background: var(--light-card-bg);
-            border-radius: 12px;
-            box-shadow: var(--shadow-light);
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 0; /* Remove border-radius */
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); /* Add subtle shadow */
             margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Only bottom border */
+            color: #fff;
+            width: 100%; /* Full width */
+            box-sizing: border-box; /* Include padding in width */
         }
         .header-title { font-size: 1.5rem; font-weight: 600; }
         .header-actions button {
-            background: none; border: none; font-size: 1.5rem; cursor: pointer;
-            margin-left: 15px; padding: 5px; color: var(--light-text-color);
+            background: #fff;
+            color: #764ba2;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+            margin-left: 15px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .header-actions button:hover {
+            transform: translateY(-2px);
+            background-color: #f0f0f0;
+        }
+        .header-actions button span {
+            display: none;
+        }
+        @media (min-width: 768px) {
+            .header-actions button span {
+                display: inline;
+            }
         }
         body.dark-mode .header-actions button { color: var(--dark-text-color); }
+
+        /* Controls Container (moved outside container) */
         .controls-container {
-            display: flex; gap: 1rem; margin-bottom: 2rem;
+            width: 90%; /* Max width for content */
+            max-width: 1200px;
+            margin: 0 auto 2rem auto; /* Center and add margin */
+            padding: 0 20px; /* Add horizontal padding */
+            box-sizing: border-box;
         }
-        #search-input { flex-grow: 1; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; }
-        .filter-tags-container {
-            padding: 1rem; border-radius: 8px; box-shadow: var(--shadow-light);
-            margin-bottom: 1rem;
+        #search-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
         }
-        .filter-tags-header { display: flex; gap: 1rem; margin-bottom: 1rem; }
-        #tag-search-input { padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; }
-        .filter-tags-list {
-            display: flex;
-            overflow-x: auto;
-            padding-bottom: 10px;
-            gap: 8px;
+        #search-input::placeholder,
+        input[type="text"]::placeholder,
+        textarea::placeholder {
+            color: rgba(255, 255, 255, 0.6);
         }
-        .filter-tag {
-            flex-shrink: 0;
-            padding: 5px 12px; border-radius: 15px; cursor: pointer; background: #eee;
-            transition: background-color 0.2s;
+        #search-input:focus,
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.1);
         }
-        .filter-tag.active { background: var(--primary-color); color: white; }
+
+        /* Main Container (only for notes grid) */
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            /* Removed background, shadow, blur, border here as it's now just for note grid */
+            color: #fff;
+            flex-grow: 1; /* Allow container to take remaining vertical space */
+        }
+
         #notes-container {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 1.5rem;
         }
         .note {
-            background: var(--light-card-bg);
-            border-radius: 8px; box-shadow: var(--shadow-light);
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             padding: 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
             border-left: 5px solid transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
         .note:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
         .note-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
-        .note-title { font-weight: 600; }
+        .note-title { font-weight: 600; color: #fff; }
         .note-content-preview {
             height: 60px; overflow: hidden;
             mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+            color: rgba(255, 255, 255, 0.8);
         }
         .note-pin { font-size: 1.2rem; color: #ccc; }
         .note.pinned .note-pin { color: var(--pinned-color); }
@@ -648,21 +704,30 @@ function generateMainHTML(username) {
         }
         .modal.active { display: flex; }
         .modal-content {
-            background: var(--light-card-bg);
+            background: rgba(255, 255, 255, 0.1);
             padding: 2rem; border-radius: 12px;
             width: 90%; max-width: 600px;
             max-height: 90vh; overflow-y: auto;
             position: relative;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
         }
         .modal-close {
             position: absolute; top: 15px; right: 20px;
             font-size: 2rem; border: none; background: none; cursor: pointer;
+            color: #fff;
         }
-        .modal-content h2 { margin-top: 0; }
+        .modal-content h2, .modal-content h3 { margin-top: 0; color: #fff; }
         .form-group { margin-bottom: 1rem; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; color: #fff; }
         .form-group input, .form-group textarea {
-            width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px;
+            width: calc(100% - 24px);
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
         }
         textarea { min-height: 150px; resize: vertical; }
         .image-previews { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
@@ -673,37 +738,116 @@ function generateMainHTML(username) {
             background: red; color: white; border: none; border-radius: 50%;
             width: 20px; height: 20px; cursor: pointer; font-weight: bold;
         }
-        #viewNoteContent img { max-width: 100%; border-radius: 8px; margin-top: 1rem; }
+        /* Adjusted styling for images within view modal */
+        #viewNoteContent .view-image {
+            max-width: 100%;
+            height: auto;
+            display: block; /* Ensures it takes its own line */
+            margin-bottom: 10px;
+            border-radius: 8px;
+        }
         .view-actions { margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: flex-end; }
+        .btn-primary {
+            background: #fff;
+            color: #764ba2;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+            width: auto;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            background-color: #f0f0f0;
+        }
         #create-note-btn {
             position: fixed; bottom: 30px; right: 30px;
             width: 60px; height: 60px;
             border-radius: 50%; border: none;
-            background: var(--primary-color); color: white;
+            background: #fff;
+            color: #764ba2;
             font-size: 2rem;
             cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
             display: flex; justify-content: center; align-items: center;
         }
+        /* Custom file input styling */
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .file-input-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .file-input-button {
+            border: none;
+            border-radius: 8px;
+            padding: 12px 25px;
+            background-color: #fff;
+            color: #764ba2;
+            cursor: pointer;
+            display: inline-block;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+        .file-input-button:hover {
+            transform: translateY(-2px);
+            background-color: #f0f0f0;
+        }
+        #selected-files-display {
+            margin-top: 5px;
+            font-size: 0.9em;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* Custom color input styling (single element) */
+        .custom-color-picker {
+            position: relative;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .custom-color-picker input[type="color"] {
+            position: absolute;
+            width: 150%;
+            height: 150%;
+            top: -25%;
+            left: -25%;
+            opacity: 0;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
+    <header class="header">
+        <div class="header-title">Willkommen, ${username}!</div>
+        <div class="header-actions">
+            <button id="settings-btn" title="Einstellungen">⚙️<span>Einstellungen</span></button>
+            <button id="logout-btn" title="Abmelden">🚪<span>Abmelden</span></button>
+        </div>
+    </header>
+
+    <div class="controls-container">
+        <input type="text" id="search-input" placeholder="Notizen durchsuchen...">
+    </div>
+
     <div class="container">
-        <header class="header">
-            <div class="header-title">Willkommen, ${username}!</div>
-            <div class="header-actions">
-                <button id="settings-btn" title="Einstellungen">⚙️</button>
-                <button id="logout-btn" title="Abmelden">🚪</button>
-            </div>
-        </header>
-        <div class="controls-container">
-            <input type="text" id="search-input" placeholder="Notizen durchsuchen...">
-        </div>
-        <div id="filter-tags-container" class="filter-tags-container" style="display: none;">
-            <div class="filter-tags-header">
-                <input type="text" id="tag-search-input" placeholder="Tags suchen...">
-            </div>
-            <div id="filter-tags-list" class="filter-tags-list"></div>
-        </div>
         <main id="notes-container"></main>
     </div>
     <button id="create-note-btn" title="Neue Notiz erstellen">+</button>
@@ -717,7 +861,6 @@ function generateMainHTML(username) {
             document.getElementById('settings-btn').addEventListener('click', openSettingsModal);
             document.getElementById('logout-btn').addEventListener('click', logout);
             document.getElementById('search-input').addEventListener('input', handleSearch);
-            document.getElementById('tag-search-input').addEventListener('input', handleTagSearch);
             document.addEventListener('click', (e) => {
                 if (e.target.classList.contains('modal')) {
                     e.target.classList.remove('active');
@@ -731,7 +874,6 @@ function generateMainHTML(username) {
                 if (!response.ok) throw new Error('Fehler beim Laden');
                 const notes = await response.json();
                 renderNotes(notes);
-                renderFilterTags(notes);
             } catch(error) {
                 console.error(error);
                 document.getElementById('notes-container').innerHTML = '<p>Notizen konnten nicht geladen werden.</p>';
@@ -754,31 +896,13 @@ function generateMainHTML(username) {
                 </div>
             \`).join('');
             document.querySelectorAll('.note').forEach(noteEl => {
+                // Corrected: use noteId (camelCase) instead of note-id
                 noteEl.querySelector('.note-pin').addEventListener('click', (e) => {
                     e.stopPropagation();
                     togglePin(noteEl.dataset.noteId);
                 });
+                // Corrected: use noteId (camelCase) instead of note-id
                 noteEl.addEventListener('click', () => openViewModal(noteEl.dataset.noteId));
-            });
-        }
-
-        function renderFilterTags(notes) {
-            const allTags = [...new Set(notes.flatMap(note => note.tags))];
-            const container = document.getElementById('filter-tags-container');
-            const list = document.getElementById('filter-tags-list');
-
-            if (allTags.length === 0) {
-                container.style.display = 'none';
-                return;
-            }
-
-            container.style.display = 'block';
-            list.innerHTML = '<span class="filter-tag active" data-tag="">Alle</span>' + allTags.map(tag =>
-                \`<span class="filter-tag" data-tag="\${tag}">#\${tag}</span>\`
-            ).join('');
-
-            document.querySelectorAll('.filter-tag').forEach(tagEl => {
-                tagEl.addEventListener('click', () => handleTagFilter(tagEl));
             });
         }
 
@@ -794,16 +918,18 @@ function generateMainHTML(username) {
                             <textarea name="content" required></textarea>
                         </div>
                         <div class="form-group">
-                            <label for="tags">Tags (Komma-getrennt)</label>
-                            <input type="text" name="tags">
-                        </div>
-                        <div class="form-group">
                             <label for="color">Farbe</label>
-                            <input type="color" name="color" value="#ffffff">
+                            <div class="custom-color-picker" style="background-color: #ffffff;">
+                                <input type="color" id="noteColor" name="color" value="#ffffff">
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label for="images">Bilder hochladen</label>
-                            <input type="file" name="images" multiple>
+                            <label for="images-upload">Bilder hochladen</label>
+                            <div class="file-input-wrapper">
+                                <input type="file" id="images-upload" name="images" multiple accept="image/*">
+                                <button type="button" class="file-input-button">Dateien auswählen</button>
+                            </div>
+                            <div id="selected-files-display"></div>
                         </div>
                         <button type="submit" class="btn-primary">Speichern</button>
                     </form>
@@ -812,6 +938,24 @@ function generateMainHTML(username) {
             modal.classList.add('active');
             modal.querySelector('.modal-close').addEventListener('click', () => modal.classList.remove('active'));
             modal.querySelector('form').addEventListener('submit', handleCreateSubmit);
+
+            // Handle custom file input display
+            const fileInput = modal.querySelector('#images-upload');
+            const selectedFilesDisplay = modal.querySelector('#selected-files-display');
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length > 0) {
+                    selectedFilesDisplay.textContent = \`Ausgewählte Dateien: \${Array.from(fileInput.files).map(f => f.name).join(', ')}\`;
+                } else {
+                    selectedFilesDisplay.textContent = '';
+                }
+            });
+
+            // Handle color input change
+            const colorInput = modal.querySelector('#noteColor');
+            const customColorPicker = modal.querySelector('.custom-color-picker');
+            colorInput.addEventListener('input', (e) => {
+                customColorPicker.style.backgroundColor = e.target.value;
+            });
         }
 
         async function handleCreateSubmit(e) {
@@ -841,7 +985,7 @@ function generateMainHTML(username) {
         }
 
         async function logout() {
-            await fetch('/api/logout', { method: 'POST' });
+            await fetch('/logout');
             window.location.href = '/login';
         }
 
@@ -850,28 +994,6 @@ function generateMainHTML(username) {
             document.querySelectorAll('.note').forEach(note => {
                 const content = note.querySelector('.note-content-preview').textContent.toLowerCase();
                 note.style.display = content.includes(searchTerm) ? '' : 'none';
-            });
-        }
-
-        function handleTagSearch(e) {
-            const searchTerm = e.target.value.toLowerCase();
-            document.querySelectorAll('.filter-tag').forEach(tag => {
-                const tagName = tag.textContent.toLowerCase();
-                tag.style.display = tagName.includes(searchTerm) ? 'inline-block' : 'none';
-            });
-        }
-
-        function handleTagFilter(tagEl) {
-            const tag = tagEl.dataset.tag;
-            document.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
-            tagEl.classList.add('active');
-            document.querySelectorAll('.note').forEach(note => {
-                const noteTags = note.dataset.tags ? note.dataset.tags.split(',') : [];
-                if (tag === '' || noteTags.includes(tag)) {
-                    note.style.display = '';
-                } else {
-                    note.style.display = 'none';
-                }
             });
         }
 
@@ -885,16 +1007,15 @@ function generateMainHTML(username) {
                     <div class="modal-content">
                         <button class="modal-close">&times;</button>
                         <h2>Notiz anzeigen</h2>
-                        <div id="viewNoteContent">\${note.content.replace(/\\n/g, '<br>')}</div>
-                        \${note.images && note.images.length > 0 ? \`
-                            <div class="image-previews">
-                                \${note.images.map(image => \`
-                                    <div class="img-preview-container">
-                                        <img src="/uploads/\${image}" alt="Notizbild" class="img-preview">
-                                    </div>
-                                \`).join('')}
-                            </div>
-                        \` : ''}
+                        <div id="viewNoteContent">\${note.content.replace(/\\n/g, '<br>')}
+                            \${note.images && note.images.length > 0 ? \`
+                                <div class="view-images-container">
+                                    \${note.images.map(image => \`
+                                        <img src="/uploads/\${image}" alt="Notizbild" class="view-image">
+                                    \`).join('')}
+                                </div>
+                            \` : ''}
+                        </div>
                         <div class="view-actions">
                             <button onclick="openEditModal('\${note.id}')" class="btn-primary">Bearbeiten</button>
                             <button onclick="deleteNote('\${note.id}')" class="btn-primary">Löschen</button>
@@ -910,6 +1031,9 @@ function generateMainHTML(username) {
         }
 
         async function openEditModal(noteId) {
+            // Close the view modal if it's open to prevent two popups
+            document.getElementById('view-modal').classList.remove('active');
+
             try {
                 const response = await fetch(\`/api/notes/\${noteId}\`);
                 if (!response.ok) throw new Error('Notiz konnte nicht geladen werden.');
@@ -926,16 +1050,18 @@ function generateMainHTML(username) {
                                 <textarea name="content" required>\${note.content}</textarea>
                             </div>
                             <div class="form-group">
-                                <label for="tags">Tags (Komma-getrennt)</label>
-                                <input type="text" name="tags" value="\${note.tags.join(', ')}">
-                            </div>
-                            <div class="form-group">
                                 <label for="color">Farbe</label>
-                                <input type="color" name="color" value="\${note.color}">
+                                <div class="custom-color-picker" style="background-color: \${note.color};">
+                                    <input type="color" id="editNoteColor" name="color" value="\${note.color}">
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label for="newImages">Weitere Bilder hochladen</label>
-                                <input type="file" name="newImages" multiple>
+                                <div class="file-input-wrapper">
+                                    <input type="file" id="edit-images-upload" name="newImages" multiple accept="image/*">
+                                    <button type="button" class="file-input-button">Dateien auswählen</button>
+                                </div>
+                                <div id="edit-selected-files-display"></div>
                             </div>
                             \${note.images && note.images.length > 0 ? \`
                                 <div class="form-group">
@@ -957,6 +1083,25 @@ function generateMainHTML(username) {
                 modal.classList.add('active');
                 modal.querySelector('.modal-close').addEventListener('click', () => modal.classList.remove('active'));
                 modal.querySelector('form').addEventListener('submit', handleEditSubmit);
+
+                // Handle custom file input display for edit modal
+                const editFileInput = modal.querySelector('#edit-images-upload');
+                const editSelectedFilesDisplay = modal.querySelector('#edit-selected-files-display');
+                editFileInput.addEventListener('change', () => {
+                    if (editFileInput.files.length > 0) {
+                        editSelectedFilesDisplay.textContent = \`Ausgewählte Dateien: \${Array.from(editFileInput.files).map(f => f.name).join(', ')}\`;
+                    } else {
+                        editSelectedFilesDisplay.textContent = '';
+                    }
+                });
+
+                // Handle color input change for edit modal
+                const editColorInput = modal.querySelector('#editNoteColor');
+                const editCustomColorPicker = modal.querySelector('.custom-color-picker');
+                editColorInput.addEventListener('input', (e) => {
+                    editCustomColorPicker.style.backgroundColor = e.target.value;
+                });
+
             } catch (error) {
                 console.error(error);
                 alert(error.message);
@@ -998,7 +1143,7 @@ function generateMainHTML(username) {
                 try {
                     const response = await fetch(\`/api/notes/\${noteId}/images/\${filename}\`, { method: 'DELETE' });
                     if (!response.ok) throw new Error('Fehler beim Löschen des Bildes.');
-                    openEditModal(noteId);
+                    openEditModal(noteId); // Re-open edit modal to refresh image list
                 } catch (error) {
                     console.error(error);
                     alert(error.message);
@@ -1013,18 +1158,26 @@ function generateMainHTML(username) {
                     <button class="modal-close">&times;</button>
                     <h2>Einstellungen</h2>
                     <form id="settings-form">
+                        <h3>Passwort ändern</h3>
                         <div class="form-group">
                             <label for="currentPassword">Aktuelles Passwort</label>
-                            <input type="password" name="currentPassword" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="newUsername">Neuer Benutzername</label>
-                            <input type="text" name="newUsername">
+                            <input type="password" name="currentPassword" required autocomplete="current-password">
                         </div>
                         <div class="form-group">
                             <label for="newPassword">Neues Passwort</label>
-                            <input type="password" name="newPassword">
+                            <input type="password" name="newPassword" id="newPasswordInput" autocomplete="new-password">
                         </div>
+                        <div class="form-group">
+                            <label for="confirmNewPassword">Neues Passwort bestätigen</label>
+                            <input type="password" name="confirmNewPassword" id="confirmNewPasswordInput" autocomplete="new-password">
+                        </div>
+
+                        <h3>Benutzername ändern</h3>
+                        <div class="form-group">
+                            <label for="newUsername">Neuer Benutzername</label>
+                            <input type="text" name="newUsername" autocomplete="username">
+                        </div>
+                        
                         <button type="submit" class="btn-primary">Speichern</button>
                     </form>
                 </div>
@@ -1041,8 +1194,14 @@ function generateMainHTML(username) {
             const data = {
                 currentPassword: formData.get('currentPassword'),
                 newUsername: formData.get('newUsername'),
-                newPassword: formData.get('newPassword')
+                newPassword: formData.get('newPassword'),
+                confirmNewPassword: formData.get('confirmNewPassword')
             };
+
+            if (data.newPassword && data.newPassword !== data.confirmNewPassword) {
+                alert('Neues Passwort und Bestätigung stimmen nicht überein.');
+                return;
+            }
 
             try {
                 const response = await fetch('/api/user/settings', {
@@ -1050,7 +1209,10 @@ function generateMainHTML(username) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
-                if (!response.ok) throw new Error('Fehler beim Aktualisieren der Einstellungen.');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Fehler beim Aktualisieren der Einstellungen.');
+                }
                 const result = await response.json();
                 alert('Einstellungen erfolgreich aktualisiert!');
                 if (result.newUsername) {
@@ -1058,7 +1220,7 @@ function generateMainHTML(username) {
                 }
                 document.getElementById('settings-modal').classList.remove('active');
             } catch (err) {
-                alert('Aktualisieren der Einstellungen fehlgeschlagen.');
+                alert('Aktualisieren der Einstellungen fehlgeschlagen: ' + err.message);
             }
         }
     </script>
