@@ -1,6 +1,6 @@
 # 🚀 Projektname
 
-[![Letzter Commit](https://img.shields.io/github/last-commit/arlomu/Tools)](https://github.com/arlomu/Tools/commits/main)
+[![Link](https://github.com/arlomu/Tools/commits/main)
 
 
 ---
