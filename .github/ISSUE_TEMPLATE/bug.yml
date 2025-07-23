@@ -1,0 +1,41 @@
+name: 🐛 Bug Report
+description: Report a bug to help us improve.
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping us find and fix bugs!
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug Description
+      description: Clearly and concisely describe what the bug is and how it can be reproduced.
+      placeholder: A detailed description of the bug and steps to reproduce...
+    validations:
+      required: true
+  - type: textarea
+    id: project-name
+    attributes:
+      label: Project Name
+      description: Provide the name of the project where the bug was found.
+      placeholder: The name of the project...
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: Describe what should happen instead.
+      placeholder: What should happen...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Provide information about your environment (OS, browser, versions, etc.).
+      placeholder: OS, browser, version...
+    validations:
+      required: true

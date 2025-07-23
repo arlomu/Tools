@@ -1,0 +1,50 @@
+name: ✨ Feature Request
+description: Suggest a new idea or functionality.
+title: "[FEATURE] "
+labels: ["feature-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to suggest a new feature!
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: Feature Description
+      description: Clearly and concisely describe the desired functionality.
+      placeholder: A detailed description of the feature...
+    validations:
+      required: true
+  - type: textarea
+    id: project-name
+    attributes:
+      label: Project Name
+      description: Provide the name of the project where the bug was found.
+      placeholder: The name of the project...
+    validations:
+      required: true
+  - type: textarea
+    id: problem-solved
+    attributes:
+      label: What problem does this feature solve?
+      description: Explain what problem would be solved by this feature.
+      placeholder: The problem to be solved...
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions or Considerations
+      description: Have you considered alternative solutions? Describe them here.
+      placeholder: If there are alternatives...
+    validations:
+      required: false
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      options:
+        - label: It is not a Bug or Dump Request.
+          required: true
+        - label: I have used the search to ensure this feature has not already been proposed.
+          required: true
