@@ -2,10 +2,10 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs').promises;
 const path = require('path');
-const { v4: uuidv4 } = require('uuid'); // For unique IDs
-const multer = require('multer'); // For file uploads
-const bcrypt = require('bcryptjs'); // For password hashing
-const session = require('express-session'); // For user sessions
+const { v4: uuidv4 } = require('uuid');
+const multer = require('multer');
+const bcrypt = require('bcryptjs');
+const session = require('express-session');
 
 const app = express();
 const PORT = 3000;
@@ -26,69 +26,51 @@ const storage = multer.diskStorage({
         cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
     }
 });
+
 const upload = multer({ storage: storage });
 
 // Middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static('public')); // Serve static files from 'public' directory
-app.use('/uploads', express.static(uploadsDir)); // Serve uploaded images
+app.use(express.static('public'));
+app.use('/uploads', express.static(uploadsDir));
 
 // Session middleware
 app.use(session({
-    secret: 'your_strong_secret_key_here_please_change_this', // !!! Wichtig: Diesen Wert ändern und geheim halten !!!
+    secret: 'your_strong_secret_key_here_please_change_this',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false } // Set to true if using HTTPS (production)
+    cookie: { secure: false, httpOnly: true, maxAge: 24 * 60 * 60 * 1000 }
 }));
 
-// --- Helper Functions ---
-
-async function readNotes() {
+// Helper Functions
+async function readData(filePath) {
     try {
-        const data = await fs.readFile(notesFilePath, 'utf8');
+        const data = await fs.readFile(filePath, 'utf8');
         return JSON.parse(data);
     } catch (error) {
-        if (error.code === 'ENOENT') {
-            return []; // File does not exist, return empty array
-        }
-        console.error('Error reading notes file:', error);
+        if (error.code === 'ENOENT') return [];
+        console.error(`Error reading file ${filePath}:`, error);
         throw error;
     }
 }
 
-async function writeNotes(notes) {
-    await fs.writeFile(notesFilePath, JSON.stringify(notes, null, 2), 'utf8');
+async function writeData(filePath, data) {
+    await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
-async function readUsers() {
-    try {
-        const data = await fs.readFile(usersFilePath, 'utf8');
-        return JSON.parse(data);
-    } catch (error) {
-        if (error.code === 'ENOENT') {
-            return []; // File does not exist, return empty array
-        }
-        console.error('Error reading users file:', error);
-        throw error;
-    }
-}
-
-async function writeUsers(users) {
-    await fs.writeFile(usersFilePath, JSON.stringify(users, null, 2), 'utf8');
-}
-
-// --- Authentication Middleware ---
+// Authentication Middleware
 function isAuthenticated(req, res, next) {
     if (req.session.userId) {
         return next();
     }
+    if (req.originalUrl.startsWith('/api')) {
+        return res.status(401).json({ success: false, error: 'Nicht authentifiziert.' });
+    }
     res.redirect('/login');
 }
 
-// --- Routes ---
-
-// Login Page
+// Routes
 app.get('/login', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -214,7 +196,6 @@ app.get('/login', (req, res) => {
     `);
 });
 
-// Register Page
 app.get('/register', (req, res) => {
     res.send(`
         <!DOCTYPE html>
@@ -340,12 +321,21 @@ app.get('/register', (req, res) => {
     `);
 });
 
+app.get('/', isAuthenticated, async (req, res) => {
+    try {
+        const users = await readData(usersFilePath);
+        const currentUser = users.find(u => u.id === req.session.userId);
+        res.send(generateMainHTML(currentUser ? currentUser.username : 'Benutzer'));
+    } catch (error) {
+        res.status(500).send('Fehler beim Laden der App.');
+    }
+});
+
 // Authentication Routes
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
-    const users = await readUsers();
+    const users = await readData(usersFilePath);
     const user = users.find(u => u.username === username);
-
     if (user && await bcrypt.compare(password, user.password)) {
         req.session.userId = user.id;
         res.redirect('/');
@@ -356,17 +346,17 @@ app.post('/login', async (req, res) => {
 
 app.post('/register', async (req, res) => {
     const { username, password } = req.body;
-    const users = await readUsers();
-
+    if (!username || !password || password.length < 4) {
+        return res.redirect('/register?error=Benutzername und ein Passwort mit mind. 4 Zeichen sind erforderlich.');
+    }
+    const users = await readData(usersFilePath);
     if (users.find(u => u.username === username)) {
         return res.redirect('/register?error=Benutzername existiert bereits');
     }
-
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = { id: uuidv4(), username, password: hashedPassword };
     users.push(newUser);
-    await writeUsers(users);
-
+    await writeData(usersFilePath, users);
     req.session.userId = newUser.id;
     res.redirect('/');
 });
@@ -376,152 +366,178 @@ app.get('/logout', (req, res) => {
         if (err) {
             return res.redirect('/');
         }
-        res.clearCookie('connect.sid'); // Clear session cookie
+        res.clearCookie('connect.sid');
         res.redirect('/login');
     });
 });
 
-// Notes API Routes (Requires Authentication)
-app.get('/', isAuthenticated, async (req, res) => {
-    try {
-        const allNotes = await readNotes();
-        const userNotes = allNotes.filter(note => note.userId === req.session.userId);
-        res.send(getNotesHTML(userNotes));
-    } catch (error) {
-        res.status(500).send('Error loading notes.');
+// User Settings API Route
+app.put('/api/user/settings', isAuthenticated, async (req, res) => {
+    const { currentPassword, newUsername, newPassword } = req.body;
+    const users = await readData(usersFilePath);
+    const userIndex = users.findIndex(u => u.id === req.session.userId);
+    if (userIndex === -1) {
+        return res.status(404).json({ success: false, error: 'Benutzer nicht gefunden.' });
     }
+
+    if (!await bcrypt.compare(currentPassword, users[userIndex].password)) {
+        return res.status(403).json({ success: false, error: 'Aktuelles Passwort ist falsch.' });
+    }
+
+    if (newUsername && newUsername !== users[userIndex].username) {
+        if (users.some(u => u.username.toLowerCase() === newUsername.toLowerCase() && u.id !== req.session.userId)) {
+            return res.status(409).json({ success: false, error: 'Dieser Benutzername ist bereits vergeben.' });
+        }
+        users[userIndex].username = newUsername;
+    }
+
+    if (newPassword) {
+        if (newPassword.length < 4) {
+            return res.status(400).json({ success: false, error: 'Das neue Passwort muss mindestens 4 Zeichen lang sein.' });
+        }
+        users[userIndex].password = await bcrypt.hash(newPassword, 10);
+    }
+
+    await writeData(usersFilePath, users);
+    res.json({ success: true, newUsername: users[userIndex].username });
 });
 
-app.get('/notes', isAuthenticated, async (req, res) => {
+// Notes API Routes
+app.get('/api/notes', isAuthenticated, async (req, res) => {
     try {
-        const allNotes = await readNotes();
-        const userNotes = allNotes.filter(note => note.userId === req.session.userId);
+        const allNotes = await readData(notesFilePath);
+        const userNotes = allNotes
+            .filter(note => note.userId === req.session.userId)
+            .sort((a, b) => (b.isPinned ? 1 : -1) - (a.isPinned ? 1 : -1) || new Date(b.created) - new Date(a.created));
         res.json(userNotes);
     } catch (error) {
-        res.status(500).json({ success: false, error: 'Failed to retrieve notes.' });
+        res.status(500).json({ success: false, error: 'Notizen konnten nicht geladen werden.' });
     }
 });
 
-app.post('/notes', isAuthenticated, upload.array('images', 5), async (req, res) => {
-    try {
-        const { content, tags } = req.body;
-        if (!content) {
-            return res.status(400).json({ success: false, error: 'Content is required.' });
-        }
+app.get('/api/notes/:id', isAuthenticated, async (req, res) => {
+    const allNotes = await readData(notesFilePath);
+    const note = allNotes.find(n => n.id === req.params.id && n.userId === req.session.userId);
+    if (note) {
+        res.json(note);
+    } else {
+        res.status(404).json({ success: false, error: 'Notiz nicht gefunden.' });
+    }
+});
 
+app.post('/api/notes', isAuthenticated, upload.array('images', 5), async (req, res) => {
+    try {
+        const { content, tags, color } = req.body;
+        if (!content) {
+            return res.status(400).json({ success: false, error: 'Inhalt ist erforderlich.' });
+        }
         const newNote = {
             id: uuidv4(),
             userId: req.session.userId,
             content: content,
-            tags: tags ? tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0) : [],
+            tags: tags ? tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
             images: req.files ? req.files.map(file => file.filename) : [],
-            created: new Date().toISOString()
+            created: new Date().toISOString(),
+            isPinned: false,
+            color: color || '#ffffff'
         };
-
-        const notes = await readNotes();
+        const notes = await readData(notesFilePath);
         notes.push(newNote);
-        await writeNotes(notes);
+        await writeData(notesFilePath, notes);
         res.status(201).json({ success: true, note: newNote });
     } catch (error) {
-        console.error('Error adding note:', error);
-        res.status(500).json({ success: false, error: 'Failed to add note.' });
+        res.status(500).json({ success: false, error: 'Fehler beim Hinzufügen der Notiz.' });
     }
 });
 
-app.put('/notes/:id', isAuthenticated, async (req, res) => {
+app.put('/api/notes/:id', isAuthenticated, upload.array('newImages', 5), async (req, res) => {
     try {
         const { id } = req.params;
-        const { content, tags } = req.body;
-        const notes = await readNotes();
+        const { content, tags, color } = req.body;
+        const notes = await readData(notesFilePath);
         const noteIndex = notes.findIndex(note => note.id === id && note.userId === req.session.userId);
-
         if (noteIndex === -1) {
-            return res.status(404).json({ success: false, error: 'Note not found or you do not have permission.' });
+            return res.status(404).json({ success: false, error: 'Notiz nicht gefunden.' });
         }
+        notes[noteIndex].content = content ?? notes[noteIndex].content;
+        notes[noteIndex].tags = tags ? tags.split(',').map(tag => tag.trim()).filter(Boolean) : notes[noteIndex].tags;
+        notes[noteIndex].color = color ?? notes[noteIndex].color;
 
-        notes[noteIndex].content = content || notes[noteIndex].content;
-        notes[noteIndex].tags = tags ? tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0) : [];
-        // Images are not updated via PUT for simplicity, would require separate handling
-
-        await writeNotes(notes);
+        if (req.files && req.files.length > 0) {
+            notes[noteIndex].images.push(...req.files.map(file => file.filename));
+        }
+        await writeData(notesFilePath, notes);
         res.json({ success: true, note: notes[noteIndex] });
     } catch (error) {
-        console.error('Error updating note:', error);
-        res.status(500).json({ success: false, error: 'Failed to update note.' });
+        res.status(500).json({ success: false, error: 'Fehler beim Aktualisieren der Notiz.' });
     }
 });
 
-app.delete('/notes/:id', isAuthenticated, async (req, res) => {
+app.delete('/api/notes/:id', isAuthenticated, async (req, res) => {
     try {
         const { id } = req.params;
-        let notes = await readNotes();
-        const initialLength = notes.length;
+        let notes = await readData(notesFilePath);
         const noteToDelete = notes.find(note => note.id === id && note.userId === req.session.userId);
-
         if (!noteToDelete) {
-            return res.status(404).json({ success: false, error: 'Note not found or you do not have permission.' });
-        }
-
-        notes = notes.filter(note => !(note.id === id && note.userId === req.session.userId));
-
-        if (notes.length === initialLength) {
-             return res.status(404).json({ success: false, error: 'Note not found or you do not have permission.' });
+            return res.status(404).json({ success: false, error: 'Notiz nicht gefunden.' });
         }
 
         if (noteToDelete.images && noteToDelete.images.length > 0) {
             for (const image of noteToDelete.images) {
-                const imagePath = path.join(uploadsDir, image);
                 try {
-                    await fs.unlink(imagePath);
-                    console.log(`Deleted image: ${image}`);
+                    await fs.unlink(path.join(uploadsDir, image));
                 } catch (imgError) {
-                    console.error(`Failed to delete image ${image}:`, imgError);
+                    console.error(`Konnte Bild nicht löschen ${image}:`, imgError);
                 }
             }
         }
 
-        await writeNotes(notes);
-        res.json({ success: true, message: 'Note deleted successfully.' });
+        const updatedNotes = notes.filter(note => note.id !== id);
+        await writeData(notesFilePath, updatedNotes);
+        res.json({ success: true, message: 'Notiz gelöscht.' });
     } catch (error) {
-        console.error('Error deleting note:', error);
-        res.status(500).json({ success: false, error: 'Failed to delete note.' });
+        res.status(500).json({ success: false, error: 'Fehler beim Löschen der Notiz.' });
+    }
+});
+
+app.delete('/api/notes/:id/images/:filename', isAuthenticated, async (req, res) => {
+    const { id, filename } = req.params;
+    const notes = await readData(notesFilePath);
+    const noteIndex = notes.findIndex(n => n.id === id && n.userId === req.session.userId);
+    if (noteIndex === -1) {
+        return res.status(404).json({ success: false, error: "Notiz nicht gefunden" });
+    }
+    const imageIndex = notes[noteIndex].images.indexOf(filename);
+    if (imageIndex > -1) {
+        notes[noteIndex].images.splice(imageIndex, 1);
+        try {
+            await fs.unlink(path.join(uploadsDir, filename));
+            await writeData(notesFilePath, notes);
+            res.json({ success: true });
+        } catch(err) {
+            res.status(500).json({ success: false, error: "Bild konnte nicht gelöscht werden" });
+        }
+    } else {
+        res.status(404).json({ success: false, error: "Bild nicht in Notiz gefunden" });
+    }
+});
+
+app.put('/api/notes/:id/pin', isAuthenticated, async (req, res) => {
+    const notes = await readData(notesFilePath);
+    const noteIndex = notes.findIndex(n => n.id === req.params.id && n.userId === req.session.userId);
+    if (noteIndex > -1) {
+        notes[noteIndex].isPinned = !notes[noteIndex].isPinned;
+        await writeData(notesFilePath, notes);
+        res.json({ success: true, isPinned: notes[noteIndex].isPinned });
+    } else {
+        res.status(404).json({ success: false, error: 'Notiz nicht gefunden.' });
     }
 });
 
 // HTML Generation Function
-function getNotesHTML(notes, currentFilter = '') {
-    const notesHtml = notes.map(note => {
-        const formattedContent = note.content
-            .replace(/\*\*\*(.*?)\*\*\*/g, '<strong>$1</strong>')
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/\|\|(.*?)\|\|/g, '<del>$1</del>')
-            .replace(/\n/g, '<br>');
-
-        const imagesHtml = (note.images && note.images.length > 0)
-            ? note.images.map(image => `<img src="/uploads/${encodeURIComponent(image)}" alt="Notizbild" class="note-image">`).join('')
-            : '';
-
-        const tagsHtml = (note.tags && note.tags.length > 0)
-            ? note.tags.map(tag => `<span class="note-tag" onclick="filterByTag('${tag}')">#${tag}</span>`).join(' ')
-            : '';
-
-        return `
-        <div class="note" data-id="${note.id}" data-tags="${note.tags ? note.tags.join(',') : ''}" data-content="${note.content}">
-            <div class="note-header">
-                <span class="note-date">${new Date(note.created).toLocaleString('de-DE')}</span>
-                <div class="note-actions">
-                    <button class="icon-button edit-btn" onclick="editNote('${note.id}')" title="Notiz bearbeiten">✏️</button>
-                    <button class="icon-button delete-btn" onclick="deleteNote('${note.id}')" title="Notiz löschen">🗑️</button>
-                </div>
-            </div>
-            <div class="note-content">${formattedContent}</div>
-            ${imagesHtml ? `<div class="note-images">${imagesHtml}</div>` : ''}
-            ${tagsHtml ? `<div class="note-tags">${tagsHtml}</div>` : ''}
-        </div>`;
-    }).join('');
-
-    return `<!DOCTYPE html>
+function generateMainHTML(username) {
+    return `
+<!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
@@ -534,7 +550,7 @@ function getNotesHTML(notes, currentFilter = '') {
             --secondary-color: #764ba2;
             --light-bg: #f5f7fa;
             --dark-bg: #1a1a2e;
-            --light-card-bg: white;
+            --light-card-bg: #ffffff;
             --dark-card-bg: #22223b;
             --light-text-color: #333;
             --dark-text-color: #e0e0e0;
@@ -542,686 +558,515 @@ function getNotesHTML(notes, currentFilter = '') {
             --dark-border-color: #3a3a4c;
             --shadow-light: 0 5px 15px rgba(0,0,0,0.08);
             --shadow-dark: 0 8px 25px rgba(0,0,0,0.4);
-            --gradient-primary: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            --pinned-color: #ffc107;
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Poppins', sans-serif;
             background: var(--light-bg);
-            min-height: 100vh;
-            padding: 20px;
             color: var(--light-text-color);
             transition: background-color 0.3s ease, color 0.3s ease;
-            line-height: 1.6;
+            margin: 0;
         }
         body.dark-mode {
             background: var(--dark-bg);
             color: var(--dark-text-color);
         }
-        body.dark-mode .note,
-        body.dark-mode .add-note-form,
-        body.dark-mode .search-form input,
-        body.dark-mode textarea,
-        body.dark-mode .empty-state {
+        body.dark-mode .note, body.dark-mode .modal-content, body.dark-mode .filter-tags-container {
             background: var(--dark-card-bg);
-            color: var(--dark-text-color);
             border-color: var(--dark-border-color);
             box-shadow: var(--shadow-dark);
         }
-        body.dark-mode textarea {
-            background-color: var(--dark-card-bg);
-        }
-        body.dark-mode .note-header {
-            border-bottom-color: var(--dark-border-color);
-        }
-        body.dark-mode .note-date,
-        body.dark-mode .note-tag {
-            color: #b0b0d0;
-        }
-        body.dark-mode .icon-button:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-        body.dark-mode .format-toolbar button {
-            background: #3a3a4c;
+        body.dark-mode input, body.dark-mode textarea {
+            background-color: #3a3a4c;
             color: var(--dark-text-color);
+            border: 1px solid var(--dark-border-color);
         }
-        body.dark-mode .format-toolbar button:hover {
-            background: #4a4a5c;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         .header {
-            background: var(--gradient-primary);
-            color: white;
-            padding: 2rem;
-            border-radius: 15px;
-            margin-bottom: 2rem;
-            text-align: center;
-            position: relative;
-            box-shadow: var(--shadow-light);
-            overflow: hidden;
-        }
-        .header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="25" cy="25" r="15" fill="%23ffffff20"/><circle cx="75" cy="75" r="15" fill="%23ffffff20"/></svg>') repeat;
-            opacity: 0.1;
-            z-index: 0;
-        }
-        .header h1, .header p {
-            position: relative;
-            z-index: 1;
-        }
-        .logout-btn, .toggle-dark-mode {
-            position: absolute;
-            top: 20px;
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            padding: 8px 15px;
-            border-radius: 20px;
-            cursor: pointer;
-            text-decoration: none;
-            font-weight: 600;
-            transition: background 0.3s ease, transform 0.2s ease;
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 5px;
-        }
-        .logout-btn:hover, .toggle-dark-mode:hover {
-            background: rgba(255,255,255,0.3);
-            transform: translateY(-2px);
-        }
-        .logout-btn { right: 20px; }
-        .toggle-dark-mode { left: 20px; }
-        .search-form {
-            margin-bottom: 2rem;
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-        }
-        .search-input {
-            flex: 1;
-            padding: 12px;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease;
-        }
-        .search-input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-        }
-        .filter-tags-container {
-            margin-bottom: 1rem;
-            padding: 1rem;
+            padding: 1rem 2rem;
             background: var(--light-card-bg);
-            border-radius: 10px;
+            border-radius: 12px;
             box-shadow: var(--shadow-light);
-            transition: background-color 0.3s, color 0.3s;
+            margin-bottom: 2rem;
         }
-        body.dark-mode .filter-tags-container {
-            background: var(--dark-card-bg);
-            box-shadow: var(--shadow-dark);
+        .header-title { font-size: 1.5rem; font-weight: 600; }
+        .header-actions button {
+            background: none; border: none; font-size: 1.5rem; cursor: pointer;
+            margin-left: 15px; padding: 5px; color: var(--light-text-color);
         }
-        .filter-tags-container h4 {
-            margin-bottom: 0.8rem;
-            color: var(--primary-color);
+        body.dark-mode .header-actions button { color: var(--dark-text-color); }
+        .controls-container {
+            display: flex; gap: 1rem; margin-bottom: 2rem;
         }
+        #search-input { flex-grow: 1; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; }
+        .filter-tags-container {
+            padding: 1rem; border-radius: 8px; box-shadow: var(--shadow-light);
+            margin-bottom: 1rem;
+        }
+        .filter-tags-header { display: flex; gap: 1rem; margin-bottom: 1rem; }
+        #tag-search-input { padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; }
         .filter-tags-list {
             display: flex;
-            flex-wrap: wrap;
+            overflow-x: auto;
+            padding-bottom: 10px;
             gap: 8px;
         }
         .filter-tag {
-            background: var(--primary-color);
-            color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            cursor: pointer;
-            transition: background-color 0.3s, transform 0.2s;
+            flex-shrink: 0;
+            padding: 5px 12px; border-radius: 15px; cursor: pointer; background: #eee;
+            transition: background-color 0.2s;
         }
-        .filter-tag:hover {
-            background: var(--secondary-color);
-            transform: translateY(-2px);
-        }
-        .filter-tag.active {
-            background: #28a745;
-            font-weight: 600;
-        }
-        .clear-filter-btn {
-            background: #dc3545;
-            color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            cursor: pointer;
-            border: none;
-            transition: background-color 0.3s, transform 0.2s;
-            margin-left: 10px;
-        }
-        .clear-filter-btn:hover {
-            background: #c82333;
-            transform: translateY(-2px);
-        }
-        .btn-primary {
-            background: var(--gradient-primary);
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            margin-top: 1rem;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            font-weight: 600;
-            box-shadow: 0 5px 15px rgba(118, 75, 162, 0.3);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(118, 75, 162, 0.4);
-        }
-        .icon-button {
-            background: none;
-            border: none;
-            font-size: 1.2rem;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 50%;
-            transition: background 0.2s ease, transform 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 38px;
-            height: 38px;
-        }
-        .icon-button:hover {
-            background: rgba(0, 0, 0, 0.05);
-            transform: scale(1.1);
-        }
-        .add-note-form {
-            background: var(--light-card-bg);
-            padding: 1.5rem;
-            border-radius: 10px;
-            box-shadow: var(--shadow-light);
-            margin-bottom: 2rem;
-            transition: background-color 0.3s ease, color 0.3s ease;
-        }
-        textarea {
-            width: 100%;
-            min-height: 120px;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            padding: 15px;
-            font-size: 16px;
-            font-family: inherit;
-            resize: vertical;
-            transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease;
-        }
-        textarea:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-        }
-        input[type="file"] {
-            margin-top: 1rem;
-            padding: 8px;
-            border: 1px solid var(--border-color);
-            border-radius: 5px;
-            background: var(--light-bg);
-            color: var(--light-text-color);
-            transition: background-color 0.3s, color 0.3s;
-        }
-        body.dark-mode input[type="file"] {
-            background: #333;
-            color: var(--dark-text-color);
-            border-color: #555;
-        }
-        .format-toolbar {
-            margin-bottom: 1rem;
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-        .format-toolbar button {
-            padding: 8px 12px;
-            background: var(--border-color);
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.3s ease, transform 0.1s ease;
-            font-weight: 600;
-        }
-        .format-toolbar button:hover {
-            background: #d1d5db;
-            transform: translateY(-1px);
-        }
-        .progress-container {
-            width: 80px;
-            height: 80px;
-            margin: 20px auto;
-            border-radius: 50%;
-            background: conic-gradient(var(--primary-color) 0%, transparent 0%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            color: var(--primary-color);
-            border: 4px solid var(--border-color);
-            overflow: hidden;
-            position: relative;
-        }
-        .progress-text {
-            position: absolute;
-            z-index: 1;
-        }
-        .notes-container {
+        .filter-tag.active { background: var(--primary-color); color: white; }
+        #notes-container {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 1.5rem;
         }
         .note {
             background: var(--light-card-bg);
-            border-radius: 10px;
-            padding: 1.5rem;
-            box-shadow: var(--shadow-light);
-            transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease, color 0.3s ease;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
+            border-radius: 8px; box-shadow: var(--shadow-light);
+            padding: 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+            border-left: 5px solid transparent;
         }
-        .note:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        .note:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
+        .note-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        .note-title { font-weight: 600; }
+        .note-content-preview {
+            height: 60px; overflow: hidden;
+            mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
         }
-        .note-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 1rem;
-            margin-bottom: 1rem;
-        }
-        .note-date {
-            font-size: 0.85em;
-            color: #666;
-        }
-        .note-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-        .note-content {
-            word-wrap: break-word;
-            flex-grow: 1;
-        }
-        .note-images {
-            display: flex;
-            gap: 10px;
-            margin-top: 1rem;
-            flex-wrap: wrap;
-        }
-        .note-image {
-            max-width: 100px;
-            max-height: 100px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        .note-image:hover {
-            transform: scale(1.1);
-        }
-        .note-tags {
-            margin-top: 1rem;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-        }
-        .note-tag {
-            background: #eee;
-            color: #555;
-            padding: 3px 8px;
-            border-radius: 15px;
-            font-size: 0.8em;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-        .note-tag:hover {
-            background-color: #ddd;
-        }
-        .empty-state {
-            text-align: center;
-            padding: 3rem;
-            background: var(--light-card-bg);
-            border-radius: 10px;
-            box-shadow: var(--shadow-light);
-            transition: background-color 0.3s, color 0.3s;
-        }
-        .empty-state h3 {
-            margin-bottom: 0.5rem;
-        }
-        /* Modal for viewing images */
+        .note-pin { font-size: 1.2rem; color: #ccc; }
+        .note.pinned .note-pin { color: var(--pinned-color); }
         .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.9);
-            justify-content: center;
-            align-items: center;
+            display: none; position: fixed; z-index: 1000;
+            left: 0; top: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            justify-content: center; align-items: center;
         }
+        .modal.active { display: flex; }
         .modal-content {
-            max-width: 90%;
-            max-height: 90%;
-            display: block;
-            margin: auto;
+            background: var(--light-card-bg);
+            padding: 2rem; border-radius: 12px;
+            width: 90%; max-width: 600px;
+            max-height: 90vh; overflow-y: auto;
+            position: relative;
         }
-        .close-modal {
-            position: absolute;
-            top: 20px;
-            right: 35px;
-            color: #f1f1f1;
-            font-size: 40px;
-            font-weight: bold;
-            cursor: pointer;
+        .modal-close {
+            position: absolute; top: 15px; right: 20px;
+            font-size: 2rem; border: none; background: none; cursor: pointer;
+        }
+        .modal-content h2 { margin-top: 0; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
+        .form-group input, .form-group textarea {
+            width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px;
+        }
+        textarea { min-height: 150px; resize: vertical; }
+        .image-previews { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+        .img-preview-container { position: relative; }
+        .img-preview { width: 80px; height: 80px; object-fit: cover; border-radius: 5px; }
+        .img-delete-btn {
+            position: absolute; top: -5px; right: -5px;
+            background: red; color: white; border: none; border-radius: 50%;
+            width: 20px; height: 20px; cursor: pointer; font-weight: bold;
+        }
+        #viewNoteContent img { max-width: 100%; border-radius: 8px; margin-top: 1rem; }
+        .view-actions { margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: flex-end; }
+        #create-note-btn {
+            position: fixed; bottom: 30px; right: 30px;
+            width: 60px; height: 60px;
+            border-radius: 50%; border: none;
+            background: var(--primary-color); color: white;
+            font-size: 2rem;
+            cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            display: flex; justify-content: center; align-items: center;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <a href="/logout" class="logout-btn">Abmelden 🚪</a>
-            <button class="toggle-dark-mode">🌙</button>
-            <h1>Meine Notizen</h1>
-            <p>Halte hier deine Gedanken und Ideen fest.</p>
+        <header class="header">
+            <div class="header-title">Willkommen, ${username}!</div>
+            <div class="header-actions">
+                <button id="settings-btn" title="Einstellungen">⚙️</button>
+                <button id="logout-btn" title="Abmelden">🚪</button>
+            </div>
+        </header>
+        <div class="controls-container">
+            <input type="text" id="search-input" placeholder="Notizen durchsuchen...">
         </div>
-        
         <div id="filter-tags-container" class="filter-tags-container" style="display: none;">
-            <h4>Nach Tags filtern:</h4>
+            <div class="filter-tags-header">
+                <input type="text" id="tag-search-input" placeholder="Tags suchen...">
+            </div>
             <div id="filter-tags-list" class="filter-tags-list"></div>
         </div>
-
-        <form id="add-note-form" class="add-note-form">
-            <div class="format-toolbar">
-                <button type="button" onclick="formatText('bold')"><b>Fett</b></button>
-                <button type="button" onclick="formatText('italic')"><i>Kursiv</i></button>
-                <button type="button" onclick="formatText('strike')"><del>Durchgestrichen</del></button>
-            </div>
-            <textarea id="note-content" name="content" placeholder="Was gibt's Neues?" required></textarea>
-            <input type="text" id="note-tags" name="tags" placeholder="Tags (Komma-getrennt), z.B. arbeit, privat">
-            <input type="file" id="note-images" name="images" multiple accept="image/*">
-            <input type="hidden" id="note-id" name="id">
-            <button type="submit" class="btn-primary">Notiz speichern</button>
-        </form>
-        
-        <div class="search-form">
-             <input type="text" id="search-input" class="search-input" placeholder="Notizen durchsuchen...">
-        </div>
-
-        <div id="notes-container" class="notes-container">
-            ${notes.length > 0 ? notesHtml : '<div class="empty-state"><h3>Keine Notizen gefunden</h3><p>Füge eine neue Notiz hinzu, um loszulegen!</p></div>'}
-        </div>
+        <main id="notes-container"></main>
     </div>
-
-    <div id="imageModal" class="modal">
-        <span class="close-modal" onclick="closeModal()">&times;</span>
-        <img class="modal-content" id="modalImage">
-    </div>
-    
+    <button id="create-note-btn" title="Neue Notiz erstellen">+</button>
+    <div id="note-modal" class="modal"></div>
+    <div id="view-modal" class="modal"></div>
+    <div id="settings-modal" class="modal"></div>
     <script>
-        // Client-side JavaScript
         document.addEventListener('DOMContentLoaded', () => {
-            const addNoteForm = document.getElementById('add-note-form');
-            const searchInput = document.getElementById('search-input');
-            const notesContainer = document.getElementById('notes-container');
-            const darkModeToggle = document.querySelector('.toggle-dark-mode');
-            let currentEditingId = null;
-
-            // Load notes initially
             loadNotes();
-            
-            // Dark Mode
-            if (localStorage.getItem('darkMode') === 'enabled') {
-                document.body.classList.add('dark-mode');
-                darkModeToggle.textContent = '☀️';
-            }
-            darkModeToggle.addEventListener('click', () => {
-                document.body.classList.toggle('dark-mode');
-                if (document.body.classList.contains('dark-mode')) {
-                    localStorage.setItem('darkMode', 'enabled');
-                    darkModeToggle.textContent = '☀️';
-                } else {
-                    localStorage.setItem('darkMode', 'disabled');
-                    darkModeToggle.textContent = '🌙';
+            document.getElementById('create-note-btn').addEventListener('click', openCreateModal);
+            document.getElementById('settings-btn').addEventListener('click', openSettingsModal);
+            document.getElementById('logout-btn').addEventListener('click', logout);
+            document.getElementById('search-input').addEventListener('input', handleSearch);
+            document.getElementById('tag-search-input').addEventListener('input', handleTagSearch);
+            document.addEventListener('click', (e) => {
+                if (e.target.classList.contains('modal')) {
+                    e.target.classList.remove('active');
                 }
-            });
-
-            // Form submission
-            addNoteForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const formData = new FormData(addNoteForm);
-                const id = formData.get('id');
-                const url = id ? \`/notes/\${id}\` : '/notes';
-                const method = id ? 'PUT' : 'POST';
-
-                try {
-                    const response = await fetch(url, {
-                        method: method,
-                        body: formData
-                    });
-                    
-                    if (!response.ok && method === 'PUT') {
-                        // If PUT fails, try a simpler JSON update for text content
-                        const fallbackResponse = await fetch(url, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                content: formData.get('content'),
-                                tags: formData.get('tags')
-                            })
-                        });
-                        if (!fallbackResponse.ok) throw new Error('Update failed');
-
-                    } else if (!response.ok) {
-                         throw new Error('Request failed');
-                    }
-
-                    addNoteForm.reset();
-                    document.getElementById('note-id').value = '';
-                    addNoteForm.querySelector('button[type="submit"]').textContent = 'Notiz speichern';
-                    await loadNotes();
-
-                } catch (error) {
-                    console.error('Error saving note:', error);
-                    alert('Fehler beim Speichern der Notiz.');
-                }
-            });
-
-            // Search functionality
-            searchInput.addEventListener('input', (e) => {
-                const searchTerm = e.target.value.toLowerCase();
-                document.querySelectorAll('.note').forEach(note => {
-                    const content = note.dataset.content.toLowerCase();
-                    const tags = note.dataset.tags.toLowerCase();
-                    note.style.display = (content.includes(searchTerm) || tags.includes(searchTerm)) ? '' : 'none';
-                });
             });
         });
 
         async function loadNotes() {
             try {
-                const response = await fetch('/notes');
+                const response = await fetch('/api/notes');
+                if (!response.ok) throw new Error('Fehler beim Laden');
                 const notes = await response.json();
-                const notesContainer = document.getElementById('notes-container');
-                
-                if (notes.length === 0) {
-                     notesContainer.innerHTML = '<div class="empty-state"><h3>Keine Notizen gefunden</h3><p>Füge eine neue Notiz hinzu, um loszulegen!</p></div>';
-                } else {
-                    notesContainer.innerHTML = notes.map(note => getNoteHTML(note)).join('');
-                }
-                
-                updateFilterTags(notes);
-                
-            } catch (error) {
-                console.error('Error loading notes:', error);
+                renderNotes(notes);
+                renderFilterTags(notes);
+            } catch(error) {
+                console.error(error);
+                document.getElementById('notes-container').innerHTML = '<p>Notizen konnten nicht geladen werden.</p>';
             }
         }
-        
-        function getNoteHTML(note) {
-            const formattedContent = note.content
-                .replace(/\\*\\*\\*(.*?)\\*\\*\\*/g, '<strong>$1</strong>')
-                .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
-                .replace(/\\*(.*?)\\*/g, '<em>$1</em>')
-                .replace(/\\|\\|(.*?)\\|\\|/g, '<del>$1</del>')
-                .replace(/\\n/g, '<br>');
 
-            const imagesHtml = (note.images && note.images.length > 0)
-                ? note.images.map(image => \`<img src="/uploads/\${encodeURIComponent(image)}" alt="Notizbild" class="note-image" onclick="openModal('/uploads/\${encodeURIComponent(image)}')">\`).join('')
-                : '';
-
-            const tagsHtml = (note.tags && note.tags.length > 0)
-                ? note.tags.map(tag => \`<span class="note-tag" onclick="filterByTag('\${tag}')">#\${tag}</span>\`).join(' ')
-                : '';
-            
-            return \`
-            <div class="note" data-id="\${note.id}" data-tags="\${note.tags ? note.tags.join(',') : ''}" data-content="\${note.content}">
-                <div class="note-header">
-                    <span class="note-date">\${new Date(note.created).toLocaleString('de-DE')}</span>
-                    <div class="note-actions">
-                        <button class="icon-button edit-btn" onclick="editNote('\${note.id}')" title="Notiz bearbeiten">✏️</button>
-                        <button class="icon-button delete-btn" onclick="deleteNote('\${note.id}')" title="Notiz löschen">🗑️</button>
+        function renderNotes(notes) {
+            const container = document.getElementById('notes-container');
+            if (notes.length === 0) {
+                container.innerHTML = '<h2>Keine Notizen vorhanden. Erstelle deine erste!</h2>';
+                return;
+            }
+            container.innerHTML = notes.map(note => \`
+                <div class="note \${note.isPinned ? 'pinned' : ''}" data-note-id="\${note.id}" style="border-left-color: \${note.color};">
+                    <div class="note-header">
+                        <div class="note-title">\${note.content.substring(0, 30)}...</div>
+                        <div class="note-pin" title="Notiz anpinnen/lösen">📌</div>
                     </div>
+                    <div class="note-content-preview">\${note.content.replace(/\\n/g, '<br>')}</div>
                 </div>
-                <div class="note-content">\${formattedContent}</div>
-                \${imagesHtml ? \`<div class="note-images">\${imagesHtml}</div>\` : ''}
-                \${tagsHtml ? \`<div class="note-tags">\${tagsHtml}</div>\` : ''}
-            </div>\`;
-        }
-        
-        function updateFilterTags(notes) {
-            const allTags = new Set(notes.flatMap(note => note.tags));
-            const filterContainer = document.getElementById('filter-tags-container');
-            const filterList = document.getElementById('filter-tags-list');
-            
-            if (allTags.size > 0) {
-                filterList.innerHTML = '';
-                allTags.forEach(tag => {
-                    const tagEl = document.createElement('span');
-                    tagEl.className = 'filter-tag';
-                    tagEl.textContent = \`#\${tag}\`;
-                    tagEl.onclick = () => filterByTag(tag);
-                    filterList.appendChild(tagEl);
+            \`).join('');
+            document.querySelectorAll('.note').forEach(noteEl => {
+                noteEl.querySelector('.note-pin').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    togglePin(noteEl.dataset.noteId);
                 });
-                const clearButton = document.createElement('button');
-                clearButton.className = 'clear-filter-btn';
-                clearButton.textContent = 'Filter löschen';
-                clearButton.onclick = () => filterByTag('');
-                filterList.appendChild(clearButton);
-                filterContainer.style.display = 'block';
-            } else {
-                filterContainer.style.display = 'none';
+                noteEl.addEventListener('click', () => openViewModal(noteEl.dataset.noteId));
+            });
+        }
+
+        function renderFilterTags(notes) {
+            const allTags = [...new Set(notes.flatMap(note => note.tags))];
+            const container = document.getElementById('filter-tags-container');
+            const list = document.getElementById('filter-tags-list');
+
+            if (allTags.length === 0) {
+                container.style.display = 'none';
+                return;
             }
-        }
-        
-        function filterByTag(tag) {
-            document.querySelectorAll('.note').forEach(note => {
-                const tags = note.dataset.tags.split(',');
-                note.style.display = (!tag || tags.includes(tag)) ? '' : 'none';
-            });
+
+            container.style.display = 'block';
+            list.innerHTML = '<span class="filter-tag active" data-tag="">Alle</span>' + allTags.map(tag =>
+                \`<span class="filter-tag" data-tag="\${tag}">#\${tag}</span>\`
+            ).join('');
+
             document.querySelectorAll('.filter-tag').forEach(tagEl => {
-               if (tagEl.textContent === \`#\${tag}\`) {
-                   tagEl.classList.add('active');
-               } else {
-                   tagEl.classList.remove('active');
-               }
+                tagEl.addEventListener('click', () => handleTagFilter(tagEl));
             });
-             document.getElementById('search-input').value = '';
         }
 
-        async function editNote(id) {
-            const noteDiv = document.querySelector(\`.note[data-id="\${id}"]\`);
-            if (!noteDiv) return;
-
-            document.getElementById('note-id').value = id;
-            document.getElementById('note-content').value = noteDiv.dataset.content;
-            document.getElementById('note-tags').value = noteDiv.dataset.tags;
-            
-            const form = document.getElementById('add-note-form');
-            form.querySelector('button[type="submit"]').textContent = 'Änderungen speichern';
-            form.scrollIntoView({ behavior: 'smooth' });
+        function openCreateModal() {
+            const modal = document.getElementById('note-modal');
+            modal.innerHTML = \`
+                <div class="modal-content">
+                    <button class="modal-close">&times;</button>
+                    <h2>Neue Notiz erstellen</h2>
+                    <form id="note-form">
+                        <div class="form-group">
+                            <label for="content">Inhalt</label>
+                            <textarea name="content" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="tags">Tags (Komma-getrennt)</label>
+                            <input type="text" name="tags">
+                        </div>
+                        <div class="form-group">
+                            <label for="color">Farbe</label>
+                            <input type="color" name="color" value="#ffffff">
+                        </div>
+                        <div class="form-group">
+                            <label for="images">Bilder hochladen</label>
+                            <input type="file" name="images" multiple>
+                        </div>
+                        <button type="submit" class="btn-primary">Speichern</button>
+                    </form>
+                </div>
+            \`;
+            modal.classList.add('active');
+            modal.querySelector('.modal-close').addEventListener('click', () => modal.classList.remove('active'));
+            modal.querySelector('form').addEventListener('submit', handleCreateSubmit);
         }
 
-        async function deleteNote(id) {
-            if (!confirm('Bist du sicher, dass du diese Notiz löschen möchtest?')) return;
+        async function handleCreateSubmit(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
 
             try {
-                const response = await fetch(\`/notes/\${id}\`, { method: 'DELETE' });
-                const result = await response.json();
-                if (result.success) {
-                    await loadNotes();
-                } else {
-                    throw new Error(result.error);
-                }
+                const response = await fetch('/api/notes', { method: 'POST', body: formData });
+                if (!response.ok) throw new Error('Fehler');
+                document.getElementById('note-modal').classList.remove('active');
+                loadNotes();
+            } catch(err) {
+                alert('Speichern fehlgeschlagen.');
+            }
+        }
+
+        async function togglePin(noteId) {
+            try {
+                const response = await fetch(\`/api/notes/\${noteId}/pin\`, { method: 'PUT' });
+                if (!response.ok) throw new Error('Pin-Status konnte nicht geändert werden.');
+                loadNotes();
             } catch (error) {
-                console.error('Error deleting note:', error);
-                alert('Fehler beim Löschen der Notiz.');
+                console.error(error);
+                alert(error.message);
             }
         }
-        
-        function formatText(command) {
-            const textarea = document.getElementById('note-content');
-            const start = textarea.selectionStart;
-            const end = textarea.selectionEnd;
-            const selectedText = textarea.value.substring(start, end);
-            let replacement = selectedText;
 
-            switch(command) {
-                case 'bold':
-                    replacement = \`**\${selectedText}**\`;
-                    break;
-                case 'italic':
-                    replacement = \`*\${selectedText}*\`;
-                    break;
-                case 'strike':
-                    replacement = \`||\${selectedText}||\`;
-                    break;
+        async function logout() {
+            await fetch('/api/logout', { method: 'POST' });
+            window.location.href = '/login';
+        }
+
+        function handleSearch(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            document.querySelectorAll('.note').forEach(note => {
+                const content = note.querySelector('.note-content-preview').textContent.toLowerCase();
+                note.style.display = content.includes(searchTerm) ? '' : 'none';
+            });
+        }
+
+        function handleTagSearch(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            document.querySelectorAll('.filter-tag').forEach(tag => {
+                const tagName = tag.textContent.toLowerCase();
+                tag.style.display = tagName.includes(searchTerm) ? 'inline-block' : 'none';
+            });
+        }
+
+        function handleTagFilter(tagEl) {
+            const tag = tagEl.dataset.tag;
+            document.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
+            tagEl.classList.add('active');
+            document.querySelectorAll('.note').forEach(note => {
+                const noteTags = note.dataset.tags ? note.dataset.tags.split(',') : [];
+                if (tag === '' || noteTags.includes(tag)) {
+                    note.style.display = '';
+                } else {
+                    note.style.display = 'none';
+                }
+            });
+        }
+
+        async function openViewModal(noteId) {
+            try {
+                const response = await fetch(\`/api/notes/\${noteId}\`);
+                if (!response.ok) throw new Error('Notiz konnte nicht geladen werden.');
+                const note = await response.json();
+                const modal = document.getElementById('view-modal');
+                modal.innerHTML = \`
+                    <div class="modal-content">
+                        <button class="modal-close">&times;</button>
+                        <h2>Notiz anzeigen</h2>
+                        <div id="viewNoteContent">\${note.content.replace(/\\n/g, '<br>')}</div>
+                        \${note.images && note.images.length > 0 ? \`
+                            <div class="image-previews">
+                                \${note.images.map(image => \`
+                                    <div class="img-preview-container">
+                                        <img src="/uploads/\${image}" alt="Notizbild" class="img-preview">
+                                    </div>
+                                \`).join('')}
+                            </div>
+                        \` : ''}
+                        <div class="view-actions">
+                            <button onclick="openEditModal('\${note.id}')" class="btn-primary">Bearbeiten</button>
+                            <button onclick="deleteNote('\${note.id}')" class="btn-primary">Löschen</button>
+                        </div>
+                    </div>
+                \`;
+                modal.classList.add('active');
+                modal.querySelector('.modal-close').addEventListener('click', () => modal.classList.remove('active'));
+            } catch (error) {
+                console.error(error);
+                alert(error.message);
             }
-            textarea.setRangeText(replacement, start, end, 'end');
-            textarea.focus();
         }
 
-        function openModal(src) {
-            const modal = document.getElementById('imageModal');
-            const modalImg = document.getElementById('modalImage');
-            modal.style.display = "flex";
-            modalImg.src = src;
+        async function openEditModal(noteId) {
+            try {
+                const response = await fetch(\`/api/notes/\${noteId}\`);
+                if (!response.ok) throw new Error('Notiz konnte nicht geladen werden.');
+                const note = await response.json();
+                const modal = document.getElementById('note-modal');
+                modal.innerHTML = \`
+                    <div class="modal-content">
+                        <button class="modal-close">&times;</button>
+                        <h2>Notiz bearbeiten</h2>
+                        <form id="edit-note-form">
+                            <input type="hidden" name="id" value="\${note.id}">
+                            <div class="form-group">
+                                <label for="content">Inhalt</label>
+                                <textarea name="content" required>\${note.content}</textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="tags">Tags (Komma-getrennt)</label>
+                                <input type="text" name="tags" value="\${note.tags.join(', ')}">
+                            </div>
+                            <div class="form-group">
+                                <label for="color">Farbe</label>
+                                <input type="color" name="color" value="\${note.color}">
+                            </div>
+                            <div class="form-group">
+                                <label for="newImages">Weitere Bilder hochladen</label>
+                                <input type="file" name="newImages" multiple>
+                            </div>
+                            \${note.images && note.images.length > 0 ? \`
+                                <div class="form-group">
+                                    <label>Aktuelle Bilder</label>
+                                    <div class="image-previews">
+                                        \${note.images.map(image => \`
+                                            <div class="img-preview-container">
+                                                <img src="/uploads/\${image}" alt="Notizbild" class="img-preview">
+                                                <button type="button" class="img-delete-btn" onclick="deleteImage('\${note.id}', '\${image}')">×</button>
+                                            </div>
+                                        \`).join('')}
+                                    </div>
+                                </div>
+                            \` : ''}
+                            <button type="submit" class="btn-primary">Speichern</button>
+                        </form>
+                    </div>
+                \`;
+                modal.classList.add('active');
+                modal.querySelector('.modal-close').addEventListener('click', () => modal.classList.remove('active'));
+                modal.querySelector('form').addEventListener('submit', handleEditSubmit);
+            } catch (error) {
+                console.error(error);
+                alert(error.message);
+            }
         }
 
-        function closeModal() {
-            document.getElementById('imageModal').style.display = "none";
+        async function handleEditSubmit(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            const noteId = formData.get('id');
+
+            try {
+                const response = await fetch(\`/api/notes/\${noteId}\`, { method: 'PUT', body: formData });
+                if (!response.ok) throw new Error('Fehler beim Aktualisieren der Notiz.');
+                document.getElementById('note-modal').classList.remove('active');
+                loadNotes();
+            } catch (err) {
+                alert('Aktualisieren fehlgeschlagen.');
+            }
+        }
+
+        async function deleteNote(noteId) {
+            if (confirm('Möchtest du diese Notiz wirklich löschen?')) {
+                try {
+                    const response = await fetch(\`/api/notes/\${noteId}\`, { method: 'DELETE' });
+                    if (!response.ok) throw new Error('Fehler beim Löschen der Notiz.');
+                    document.getElementById('view-modal').classList.remove('active');
+                    loadNotes();
+                } catch (error) {
+                    console.error(error);
+                    alert(error.message);
+                }
+            }
+        }
+
+        async function deleteImage(noteId, filename) {
+            if (confirm('Möchtest du dieses Bild wirklich löschen?')) {
+                try {
+                    const response = await fetch(\`/api/notes/\${noteId}/images/\${filename}\`, { method: 'DELETE' });
+                    if (!response.ok) throw new Error('Fehler beim Löschen des Bildes.');
+                    openEditModal(noteId);
+                } catch (error) {
+                    console.error(error);
+                    alert(error.message);
+                }
+            }
+        }
+
+        function openSettingsModal() {
+            const modal = document.getElementById('settings-modal');
+            modal.innerHTML = \`
+                <div class="modal-content">
+                    <button class="modal-close">&times;</button>
+                    <h2>Einstellungen</h2>
+                    <form id="settings-form">
+                        <div class="form-group">
+                            <label for="currentPassword">Aktuelles Passwort</label>
+                            <input type="password" name="currentPassword" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newUsername">Neuer Benutzername</label>
+                            <input type="text" name="newUsername">
+                        </div>
+                        <div class="form-group">
+                            <label for="newPassword">Neues Passwort</label>
+                            <input type="password" name="newPassword">
+                        </div>
+                        <button type="submit" class="btn-primary">Speichern</button>
+                    </form>
+                </div>
+            \`;
+            modal.classList.add('active');
+            modal.querySelector('.modal-close').addEventListener('click', () => modal.classList.remove('active'));
+            modal.querySelector('form').addEventListener('submit', handleSettingsSubmit);
+        }
+
+        async function handleSettingsSubmit(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            const data = {
+                currentPassword: formData.get('currentPassword'),
+                newUsername: formData.get('newUsername'),
+                newPassword: formData.get('newPassword')
+            };
+
+            try {
+                const response = await fetch('/api/user/settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) throw new Error('Fehler beim Aktualisieren der Einstellungen.');
+                const result = await response.json();
+                alert('Einstellungen erfolgreich aktualisiert!');
+                if (result.newUsername) {
+                    document.querySelector('.header-title').textContent = \`Willkommen, \${result.newUsername}!\`;
+                }
+                document.getElementById('settings-modal').classList.remove('active');
+            } catch (err) {
+                alert('Aktualisieren der Einstellungen fehlgeschlagen.');
+            }
         }
     </script>
 </body>
-</html>`;
+</html>
+    `;
 }
 
-
-// Start the server
 app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(`Server läuft auf http://localhost:${PORT}`);
 });
