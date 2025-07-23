@@ -2,35 +2,23 @@
 
 ---
 
-## ✨ Inhalt / Tools
+## ✨ Content / Tools
 
-* **Tool 1:** Notizen Webseite modern einfach inkl Editor & mehr.
-* **Tool 2:** VM Manager einfach VMs erstellen mit Docker & mehr.
+* **Tool 1:** Modern, simple notes website including editor & more.
+* **Tool 2:** VM Manager – easily create VMs with Docker & more.
 
 ---
 
 ## 🛠️ Installation
 
-Um dieses Projekt lokal einzurichten und auszuführen, befolge diese Schritte:
+To set up and run this project locally, follow these steps:
 
-### Voraussetzungen
+### Steps
 
-Stelle sicher, dass du die folgenden Tools installiert hast:
-
-* [Tool 1] (NodeJS, NPM)
-* [Tool 2] (NodeJS, Docker, NPM)
-
-### Schritte
-
-1.  **Repository klonen:**
+1.  **Clone the repository:**
     ```bash
     git clone [https://github.com/arlomu/Tools.git](https://github.com/arlomu/Tools.git)
     cd Tools
-    ```
-
-3.  **Projekt starten:**
-    ```bash
     cd (Tool Name)
-    npm install
-    npm start
+    # READ the README.md!
     ```
