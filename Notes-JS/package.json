@@ -10,5 +10,12 @@
     "multer": "^2.0.2",
     "path": "^0.12.7",
     "uuid": "^11.1.0"
-  }
+  },
+  "name": "Notes-js",
+  "version": "1.0",
+  "main": "app.js",
+  "scripts": {
+    "start": "sudo node app.js"
+  },
+  "author": "arlomu"
 }

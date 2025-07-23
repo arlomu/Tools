@@ -30,6 +30,7 @@ Stelle sicher, dass du die folgenden Tools installiert hast:
 
 3.  **Projekt starten:**
     ```bash
-    cd (das Tool hier)
-    node app.js
+    cd (Tool Name)
+    npm install
+    npm start
     ```
