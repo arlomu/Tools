@@ -6,12 +6,12 @@ const Docker = require('dockerode');
 const { v4: uuidv4 } = require('uuid');
 const bodyParser = require('body-parser');
 
-// Docker Client
+// Docker Client initialisieren
 const docker = new Docker();
 const app = express();
 expressWs(app);
 
-// Config
+// Konfiguration
 const PORT = process.env.PORT || 3000;
 const LOG_FILE = path.join(__dirname, 'vm-logs.json');
 const CONFIG_FILE = path.join(__dirname, 'vm-configs.json');
@@ -23,7 +23,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Initialize files
+// Dateien initialisieren
 function initFiles() {
   if (!fs.existsSync(LOG_FILE)) fs.writeFileSync(LOG_FILE, '{}');
   if (!fs.existsSync(CONFIG_FILE)) fs.writeFileSync(CONFIG_FILE, '{}');
@@ -32,9 +32,9 @@ function initFiles() {
   if (!fs.existsSync('public/js')) fs.mkdirSync('public/js', { recursive: true });
 }
 
-// Create default files with modern UI
+// Standarddateien erstellen
 function createDefaultFiles() {
-  // Modern index.ejs
+  // index.ejs
   if (!fs.existsSync('views/index.ejs')) {
     fs.writeFileSync('views/index.ejs', `<!DOCTYPE html>
 <html lang="de">
@@ -54,8 +54,8 @@ function createDefaultFiles() {
         <nav>
             <ul>
                 <li class="active"><a href="#"><i class="fas fa-server"></i> Dashboard</a></li>
-                <li><a href="#"><i class="fas fa-plus-circle"></i> Create VM</a></li>
-                <li><a href="#"><i class="fas fa-cog"></i> Settings</a></li>
+                <li><a href="#"><i class="fas fa-plus-circle"></i> VM erstellen</a></li>
+                <li><a href="#"><i class="fas fa-cog"></i> Einstellungen</a></li>
             </ul>
         </nav>
     </div>
@@ -70,14 +70,14 @@ function createDefaultFiles() {
         
         <div class="content">
             <div class="card vm-controls">
-                <h2><i class="fas fa-plus"></i> Create New VM</h2>
+                <h2><i class="fas fa-plus"></i> Neue VM erstellen</h2>
                 <form id="create-vm-form">
-                    <!-- Form will be loaded via JS -->
+                    <!-- Formular wird via JavaScript geladen -->
                 </form>
             </div>
             
             <div class="card vm-list">
-                <h2><i class="fas fa-list"></i> Your VMs</h2>
+                <h2><i class="fas fa-list"></i> Ihre VMs</h2>
                 <div id="containers-list" class="grid-container"></div>
             </div>
             
@@ -85,9 +85,9 @@ function createDefaultFiles() {
                 <h2><i class="fas fa-terminal"></i> Terminal</h2>
                 <div id="terminal" class="terminal-window"></div>
                 <div class="terminal-input">
-                    <input type="text" id="command-input" placeholder="Enter command...">
-                    <button id="send-command" class="btn-primary"><i class="fas fa-paper-plane"></i> Send</button>
-                    <button id="clear-terminal" class="btn-secondary"><i class="fas fa-broom"></i> Clear</button>
+                    <input type="text" id="command-input" placeholder="Befehl eingeben...">
+                    <button id="send-command" class="btn-primary"><i class="fas fa-paper-plane"></i> Senden</button>
+                    <button id="clear-terminal" class="btn-secondary"><i class="fas fa-broom"></i> Leeren</button>
                 </div>
             </div>
         </div>
@@ -98,7 +98,7 @@ function createDefaultFiles() {
 </html>`);
   }
 
-  // Modern CSS with animations
+  // style.css
   if (!fs.existsSync('public/css/style.css')) {
     fs.writeFileSync('public/css/style.css', `:root {
     --primary: #1e3a8a;
@@ -125,7 +125,6 @@ body {
     min-height: 100vh;
 }
 
-/* Sidebar */
 .sidebar {
     width: 250px;
     background-color: var(--primary-dark);
@@ -178,7 +177,6 @@ nav ul li a i {
     margin-right: 10px;
 }
 
-/* Main Content */
 .main-content {
     flex: 1;
     padding: 20px;
@@ -200,7 +198,6 @@ header {
     object-fit: cover;
 }
 
-/* Cards */
 .card {
     background-color: var(--primary-dark);
     border-radius: 10px;
@@ -226,14 +223,12 @@ header {
     margin-right: 10px;
 }
 
-/* Grid */
 .grid-container {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 20px;
 }
 
-/* VM Card */
 .vm-card {
     background-color: var(--dark);
     border-radius: 8px;
@@ -271,7 +266,6 @@ header {
     margin-top: 15px;
 }
 
-/* Buttons */
 .btn {
     padding: 8px 15px;
     border: none;
@@ -316,12 +310,6 @@ header {
     color: white;
 }
 
-.btn-warning {
-    background-color: var(--warning);
-    color: white;
-}
-
-/* Terminal */
 .terminal-container {
     display: none;
 }
@@ -352,7 +340,6 @@ header {
     border-radius: 5px;
 }
 
-/* Status */
 .status-running {
     color: var(--success);
 }
@@ -365,7 +352,6 @@ header {
     color: var(--warning);
 }
 
-/* Animations */
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
@@ -375,7 +361,6 @@ header {
     animation: fadeIn 0.5s ease forwards;
 }
 
-/* Tabs */
 .tabs {
     display: flex;
     margin-bottom: 20px;
@@ -408,7 +393,6 @@ header {
     display: block;
 }
 
-/* Form Elements */
 .form-group {
     margin-bottom: 20px;
 }
@@ -458,7 +442,6 @@ header {
     color: #94a3b8;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
     .sidebar {
         width: 80px;
@@ -479,30 +462,28 @@ header {
 }`);
   }
 
-  // Modern JavaScript with animations
+  // script.js
   if (!fs.existsSync('public/js/script.js')) {
     fs.writeFileSync('public/js/script.js', `document.addEventListener('DOMContentLoaded', function() {
-    // Tab functionality
+    let currentContainerId = null;
+    let socket = null;
+
     function setupTabs() {
         const tabs = document.querySelectorAll('.tab');
         tabs.forEach(tab => {
             tab.addEventListener('click', function() {
-                // Deactivate all tabs
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
                 
-                // Activate clicked tab
                 this.classList.add('active');
                 const tabId = this.getAttribute('data-tab');
                 document.getElementById(tabId).classList.add('active');
             });
         });
         
-        // Activate first tab
         if (tabs.length > 0) tabs[0].click();
     }
     
-    // Load create form
     function loadCreateForm() {
         fetch('/create-form')
             .then(response => response.text())
@@ -510,7 +491,6 @@ header {
                 document.getElementById('create-vm-form').innerHTML = html;
                 setupTabs();
                 
-                // Form submission
                 document.getElementById('create-vm-form').addEventListener('submit', function(e) {
                     e.preventDefault();
                     createVM();
@@ -518,16 +498,14 @@ header {
             });
     }
     
-    // Create VM with animation
     function createVM() {
         const form = document.getElementById('create-vm-form');
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
         
-        // Show loading animation
         const submitBtn = form.querySelector('button[type="submit"]');
         const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Erstelle...';
         submitBtn.disabled = true;
         
         fetch('/create-vm', {
@@ -538,17 +516,14 @@ header {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Success animation
-                submitBtn.innerHTML = '<i class="fas fa-check"></i> Success!';
+                submitBtn.innerHTML = '<i class="fas fa-check"></i> Erfolg!';
                 setTimeout(() => {
                     submitBtn.innerHTML = originalText;
                     submitBtn.disabled = false;
                 }, 2000);
-                
-                // Refresh container list with animation
                 fetchContainers();
             } else {
-                showError(data.error || 'Failed to create VM');
+                showError(data.error || 'VM konnte nicht erstellt werden');
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
             }
@@ -560,11 +535,10 @@ header {
         });
     }
     
-    // Show error with animation
     function showError(message) {
         const errorEl = document.createElement('div');
         errorEl.className = 'error-message';
-        errorEl.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+        errorEl.innerHTML = \`<i class="fas fa-exclamation-circle"></i> \${message}\`;
         errorEl.style.animation = 'fadeIn 0.3s ease';
         
         const form = document.getElementById('create-vm-form');
@@ -576,7 +550,6 @@ header {
         }, 5000);
     }
     
-    // Fetch containers with animation
     function fetchContainers() {
         const containerList = document.getElementById('containers-list');
         containerList.style.opacity = '0.5';
@@ -588,14 +561,14 @@ header {
                 containerList.innerHTML = '';
                 
                 if (containers.length === 0) {
-                    containerList.innerHTML = '<div class="empty-state"><i class="fas fa-server"></i><p>No VMs found</p></div>';
+                    containerList.innerHTML = '<div class="empty-state"><i class="fas fa-server"></i><p>Keine VMs gefunden</p></div>';
                     return;
                 }
                 
                 containers.forEach((container, index) => {
                     const containerCard = document.createElement('div');
                     containerCard.className = 'vm-card';
-                    containerCard.style.animationDelay = `${index * 0.1}s`;
+                    containerCard.style.animationDelay = \`\${index * 0.1}s\`;
                     
                     const name = container.Names[0].replace('/', '');
                     const image = container.Image.split(':')[0];
@@ -606,7 +579,7 @@ header {
                         <h3><i class="fas fa-server"></i> \${name}</h3>
                         <p><strong>Image:</strong> \${image}</p>
                         <p><strong>Status:</strong> <span class="status-\${status}">\${status}</span></p>
-                        <p><strong>Created:</strong> \${new Date(container.Created * 1000).toLocaleString()}</p>
+                        <p><strong>Erstellt:</strong> \${new Date(container.Created * 1000).toLocaleString()}</p>
                         <div class="vm-actions">
                             <button onclick="connectToTerminal('\${id}')" class="btn btn-primary">
                                 <i class="fas fa-terminal"></i> Terminal
@@ -618,7 +591,7 @@ header {
                                 <i class="fas fa-stop"></i> Stop
                             </button>
                             <button onclick="deleteContainer('\${id}')" class="btn btn-danger">
-                                <i class="fas fa-trash"></i> Delete
+                                <i class="fas fa-trash"></i> Löschen
                             </button>
                         </div>
                     \`;
@@ -630,27 +603,23 @@ header {
             });
     }
     
-    // Terminal connection
     function connectToTerminal(containerId) {
         const terminalContainer = document.getElementById('terminal-container');
         const terminal = document.getElementById('terminal');
         
-        // Close existing connection
         if (window.socket) {
             window.socket.close();
         }
         
-        // Show terminal with animation
         terminalContainer.style.display = 'block';
         terminalContainer.style.animation = 'fadeIn 0.3s ease';
-        terminal.innerHTML = '<span class="text-muted">Connecting to VM...</span>';
+        terminal.innerHTML = '<span class="text-muted">Verbinde mit VM...</span>';
         currentContainerId = containerId;
         
-        // WebSocket connection
         window.socket = new WebSocket(\`ws://\${window.location.host}/terminal/\${containerId}\`);
         
         window.socket.onopen = () => {
-            terminal.innerHTML = '<span class="text-success">Connected to VM terminal</span><br><br>> ';
+            terminal.innerHTML = '<span class="text-success">Mit VM verbunden</span><br><br>> ';
         };
         
         window.socket.onmessage = (msg) => {
@@ -659,19 +628,26 @@ header {
         };
         
         window.socket.onerror = (error) => {
-            terminal.innerHTML += \`<span class="text-danger">Error: \${error.message || 'Connection failed'}</span>\`;
+            terminal.innerHTML += \`<span class="text-danger">Fehler: \${error.message || 'Verbindung fehlgeschlagen'}</span>\`;
         };
         
         window.socket.onclose = () => {
-            terminal.innerHTML += '<br><span class="text-muted">Connection closed</span>';
+            terminal.innerHTML += '<br><span class="text-muted">Verbindung geschlossen</span>';
         };
     }
     
-    // Global functions
+    function sendCommand() {
+        const input = document.getElementById('command-input');
+        if (window.socket && window.socket.readyState === WebSocket.OPEN && input.value.trim()) {
+            window.socket.send(input.value + '\\n');
+            input.value = '';
+        }
+    }
+    
     window.connectToTerminal = connectToTerminal;
     window.startContainer = function(containerId) {
         const btn = document.querySelector(\`button[onclick="startContainer('\${containerId}')"]\`);
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starte';
         btn.disabled = true;
         
         fetch(\`/start-container/\${containerId}\`, { method: 'POST' })
@@ -682,7 +658,7 @@ header {
     
     window.stopContainer = function(containerId) {
         const btn = document.querySelector(\`button[onclick="stopContainer('\${containerId}')"]\`);
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Stopping';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Stoppe';
         btn.disabled = true;
         
         fetch(\`/stop-container/\${containerId}\`, { method: 'POST' })
@@ -692,9 +668,9 @@ header {
     };
     
     window.deleteContainer = function(containerId) {
-        if (confirm('Are you sure you want to delete this VM? All data will be lost!')) {
+        if (confirm('Sind Sie sicher, dass Sie diese VM löschen möchten? Alle Daten gehen verloren!')) {
             const btn = document.querySelector(\`button[onclick="deleteContainer('\${containerId}')"]\`);
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Lösche';
             btn.disabled = true;
             
             fetch(\`/delete-container/\${containerId}\`, { method: 'POST' })
@@ -708,11 +684,9 @@ header {
         }
     };
     
-    // Initialize
     loadCreateForm();
     fetchContainers();
     
-    // Terminal command sending
     document.getElementById('send-command').addEventListener('click', sendCommand);
     document.getElementById('command-input').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') sendCommand();
@@ -721,23 +695,346 @@ header {
     document.getElementById('clear-terminal').addEventListener('click', () => {
         document.getElementById('terminal').innerHTML = '';
     });
-    
-    function sendCommand() {
-        const input = document.getElementById('command-input');
-        if (window.socket && window.socket.readyState === WebSocket.OPEN && input.value.trim()) {
-            window.socket.send(input.value + '\\n');
-            input.value = '';
-        }
-    }
 });`);
   }
 }
 
-// [Rest of the backend code remains the same as in previous examples]
+// API-Endpunkte
+app.get('/create-form', (req, res) => {
+  res.send(`
+<div class="tabs">
+    <div class="tab active" data-tab="basic">Basis</div>
+    <div class="tab" data-tab="resources">Ressourcen</div>
+    <div class="tab" data-tab="software">Software</div>
+    <div class="tab" data-tab="network">Netzwerk</div>
+</div>
 
-// Start server
-initFiles();
-createDefaultFiles();
+<div id="basic" class="tab-content active">
+    <div class="form-group">
+        <label for="vm-name">VM Name:</label>
+        <input type="text" id="vm-name" name="name" required placeholder="meine-vm">
+    </div>
+    
+    <div class="form-group">
+        <label for="vm-image">Basis-Image:</label>
+        <select id="vm-image" name="image" required>
+            <option value="ubuntu:latest">Ubuntu (latest)</option>
+            <option value="debian:latest">Debian (latest)</option>
+            <option value="centos:latest">CentOS (latest)</option>
+            <option value="alpine:latest">Alpine (klein)</option>
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label for="vm-hostname">Hostname:</label>
+        <input type="text" id="vm-hostname" name="hostname" placeholder="vm-host">
+    </div>
+</div>
+
+<div id="resources" class="tab-content">
+    <div class="form-row">
+        <div class="form-col">
+            <label for="vm-ram">RAM (MB):</label>
+            <input type="number" id="vm-ram" name="ram" min="256" value="1024" required>
+        </div>
+        
+        <div class="form-col">
+            <label for="vm-cores">CPU Kerne:</label>
+            <input type="number" id="vm-cores" name="cores" min="1" max="16" value="2" required>
+        </div>
+    </div>
+    
+    <div class="form-row">
+        <div class="form-col">
+            <label for="vm-disk">Disk Space (MB):</label>
+            <input type="number" id="vm-disk" name="disk" min="512" value="5120" required>
+        </div>
+        
+        <div class="form-col">
+            <label for="vm-swap">Swap Space (MB):</label>
+            <input type="number" id="vm-swap" name="swap" min="0" value="1025">
+        </div>
+    </div>
+</div>
+
+<div id="software" class="tab-content">
+    <div class="checkbox-group">
+        <h4>Programmiersprachen:</h4>
+        <div class="checkbox-item">
+            <input type="checkbox" id="install-java" name="installJava">
+            <label for="install-java">Java JDK</label>
+        </div>
+        <div class="checkbox-item">
+            <input type="checkbox" id="install-python" name="installPython" checked>
+            <label for="install-python">Python 3</label>
+        </div>
+        <div class="checkbox-item">
+            <input type="checkbox" id="install-node" name="installNode">
+            <label for="install-node">Node.js</label>
+        </div>
+    </div>
+    
+    <div class="checkbox-group">
+        <h4>Datenbanken:</h4>
+        <div class="checkbox-item">
+            <input type="checkbox" id="install-mysql" name="installMysql">
+            <label for="install-mysql">MySQL</label>
+        </div>
+        <div class="checkbox-item">
+            <input type="checkbox" id="install-mongodb" name="installMongodb">
+            <label for="install-mongodb">MongoDB</label>
+        </div>
+    </div>
+    
+    <div class="checkbox-group">
+        <h4>Tools:</h4>
+        <div class="checkbox-item">
+            <input type="checkbox" id="install-git" name="installGit" checked>
+            <label for="install-git">Git</label>
+        </div>
+        <div class="checkbox-item">
+            <input type="checkbox" id="install-curl" name="installCurl" checked>
+            <label for="install-curl">cURL</label>
+        </div>
+    </div>
+</div>
+
+<div id="network" class="tab-content">
+    <div class="form-group">
+        <label for="vm-port">Port-Mapping (Host:Guest):</label>
+        <input type="text" id="vm-port" name="port" placeholder="8080:80,3306:3306">
+    </div>
+    
+    <div class="form-group">
+        <label for="vm-network">Netzwerkmodus:</label>
+        <select id="vm-network" name="network">
+            <option value="bridge">Bridge (Standard)</option>
+            <option value="host">Host</option>
+        </select>
+    </div>
+</div>
+
+<div class="form-group">
+    <button type="submit" class="btn-primary"><i class="fas fa-plus-circle"></i> VM erstellen</button>
+</div>
+  `);
+});
+
+app.get('/containers', async (req, res) => {
+  try {
+    const containers = await docker.listContainers({ all: true });
+    res.json(containers);
+  } catch (err) {
+    console.error('Fehler beim Abrufen der Container:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/create-vm', async (req, res) => {
+  const {
+    name,
+    image,
+    hostname,
+    ram,
+    cores,
+    disk,
+    swap,
+    installPython,
+    installJava,
+    installNode,
+    installMysql,
+    installMongodb,
+    port,
+    network
+  } = req.body;
+
+  const vmId = uuidv4();
+  const containerName = `vm-${name}-${vmId}`.toLowerCase().replace(/[^a-z0-9-]/g, '');
+
+  try {
+    let installScript = '#!/bin/bash\n';
+    installScript += 'apt-get update && apt-get install -y wget sudo\n';
+    
+    if (installPython) installScript += 'apt-get install -y python3 python3-pip\n';
+    if (installJava) installScript += 'apt-get install -y openjdk-11-jdk\n';
+    if (installNode) {
+      installScript += 'curl -fsSL https://deb.nodesource.com/setup_16.x | bash -\n';
+      installScript += 'apt-get install -y nodejs\n';
+    }
+    if (installMysql) {
+      installScript += 'apt-get install -y mysql-server\n';
+      installScript += 'systemctl enable mysql\n';
+    }
+    if (installMongodb) {
+      installScript += 'wget -qO - https://www.mongodb.org/static/pgp/server-4.4.asc | apt-key add -\n';
+      installScript += 'echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/4.4 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-4.4.list\n';
+      installScript += 'apt-get update && apt-get install -y mongodb-org\n';
+      installScript += 'systemctl enable mongod\n';
+    }
+    
+    installScript += 'echo "#!/bin/bash" > /start.sh\n';
+    if (installMysql) installScript += 'service mysql start\n';
+    if (installMongodb) installScript += 'service mongod start\n';
+    installScript += '/bin/bash\n';
+    installScript += 'chmod +x /start.sh\n';
+
+    const portBindings = {};
+    if (port) {
+      port.split(',').forEach(mapping => {
+        const [hostPort, containerPort] = mapping.trim().split(':');
+        if (hostPort && containerPort) {
+          portBindings[`${containerPort}/tcp`] = [{ HostPort: hostPort }];
+        }
+      });
+    }
+
+    // Ensure swap is at least 1MB larger than RAM
+    const calculatedSwap = Math.max(parseInt(swap || 0), parseInt(ram) + 1);
+
+    const container = await docker.createContainer({
+      Image: image,
+      name: containerName,
+      Hostname: hostname || containerName,
+      Cmd: ['/bin/bash', '-c', installScript],
+      Tty: true,
+      AttachStdin: true,
+      AttachStdout: true,
+      AttachStderr: true,
+      OpenStdin: true,
+      StdinOnce: false,
+      HostConfig: {
+        Memory: parseInt(ram) * 1024 * 1024,
+        MemorySwap: calculatedSwap * 1024 * 1024,
+        CpuShares: parseInt(cores) * 1024,
+        PortBindings: portBindings,
+        NetworkMode: network || 'bridge'
+      }
+    });
+
+    await container.start();
+
+    const configs = fs.existsSync(CONFIG_FILE) ? JSON.parse(fs.readFileSync(CONFIG_FILE)) : {};
+    configs[container.id] = {
+      name: containerName,
+      created: new Date().toISOString(),
+      config: req.body
+    };
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(configs, null, 2));
+
+    const logs = fs.existsSync(LOG_FILE) ? JSON.parse(fs.readFileSync(LOG_FILE)) : {};
+    logs[container.id] = [];
+    fs.writeFileSync(LOG_FILE, JSON.stringify(logs, null, 2));
+
+    res.json({ success: true, id: container.id });
+  } catch (err) {
+    console.error('Fehler beim Erstellen der VM:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/start-container/:id', async (req, res) => {
+  try {
+    const container = docker.getContainer(req.params.id);
+    await container.start();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/stop-container/:id', async (req, res) => {
+  try {
+    const container = docker.getContainer(req.params.id);
+    await container.stop();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/delete-container/:id', async (req, res) => {
+  try {
+    const container = docker.getContainer(req.params.id);
+    
+    try {
+      await container.stop();
+    } catch (e) {}
+    
+    await container.remove({ force: true });
+    
+    const configs = JSON.parse(fs.readFileSync(CONFIG_FILE));
+    delete configs[req.params.id];
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(configs, null, 2));
+    
+    const logs = JSON.parse(fs.readFileSync(LOG_FILE));
+    delete logs[req.params.id];
+    fs.writeFileSync(LOG_FILE, JSON.stringify(logs, null, 2));
+    
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.ws('/terminal/:id', (ws, req) => {
+  const containerId = req.params.id;
+  const container = docker.getContainer(containerId);
+  
+  ws.on('error', (error) => {
+    console.error('WebSocket Error:', error);
+    ws.send('Fehler: ' + (error.message || 'Unbekannter Fehler'));
+  });
+
+  container.exec({
+    AttachStdin: true,
+    AttachStdout: true,
+    AttachStderr: true,
+    Tty: true,
+    Cmd: ['/bin/bash']
+  }, (err, exec) => {
+    if (err) {
+      ws.send('Exec Error: ' + (err.message || 'Container nicht erreichbar'));
+      return ws.close();
+    }
+
+    exec.start({ hijack: true, stdin: true }, (err, stream) => {
+      if (err) {
+        ws.send('Stream Error: ' + (err.message || 'Terminal konnte nicht gestartet werden'));
+        return ws.close();
+      }
+
+      docker.modem.demuxStream(stream, ws, ws);
+      
+      ws.on('message', (msg) => {
+        try {
+          stream.write(msg);
+          
+          const logs = JSON.parse(fs.readFileSync(LOG_FILE));
+          if (!logs[containerId]) logs[containerId] = [];
+          logs[containerId].push(msg);
+          fs.writeFileSync(LOG_FILE, JSON.stringify(logs, null, 2));
+        } catch (e) {
+          console.error('Write Error:', e);
+        }
+      });
+
+      ws.on('close', () => {
+        try {
+          stream.end();
+        } catch (e) {
+          console.error('Close Error:', e);
+        }
+      });
+    });
+  });
+});
+
+app.get('/', (req, res) => {
+  initFiles();
+  createDefaultFiles();
+  res.render('index');
+});
+
 app.listen(PORT, () => {
-  console.log(`Modern Docker VM Manager running on http://localhost:${PORT}`);
+  console.log(`Modernisierter Docker VM Manager läuft auf http://localhost:${PORT}`);
 });
