@@ -1,7 +1,4 @@
-# 🚀 Projektname
-
-[![Link](https://github.com/arlomu/Tools/commits/main)
-
+# 🚀 Tools
 
 ---
 
