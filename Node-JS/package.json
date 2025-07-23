@@ -1,8 +1,14 @@
 {
   "dependencies": {
+    "bcryptjs": "^3.0.2",
     "crypto": "^1.0.1",
+    "express": "^5.1.0",
+    "express-session": "^1.18.2",
+    "formidable": "^3.5.4",
     "fs": "^0.0.1-security",
     "https": "^1.0.0",
-    "path": "^0.12.7"
+    "multer": "^2.0.2",
+    "path": "^0.12.7",
+    "uuid": "^11.1.0"
   }
 }
