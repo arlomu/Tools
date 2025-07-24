@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meine Notizen</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --light-bg: #f5f7fa;
+            --dark-bg: #1a1a2e;
+            --light-card-bg: #ffffff;
+            --dark-card-bg: #22223b;
+            --light-text-color: #333;
+            --dark-text-color: #e0e0e0;
+            --border-color: #e1e5e9;
+            --dark-border-color: #3a3a4c;
+            --shadow-light: 0 5px 15px rgba(0,0,0,0.08);
+            --shadow-dark: 0 8px 25px rgba(0,0,0,0.4);
+            --pinned-color: #ffc107; /* Gelb für angepinnt */
+            /* ANPASSUNG: Grüner Schimmer jetzt 100% deckend */
+            --pinned-highlight-color: rgba(0, 255, 0, 1);
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            margin: 0;
+            display: flex;
+            flex-direction: column; /* Stack elements vertically */
+            min-height: 100vh; /* Ensure full viewport height */
+        }
+        body.dark-mode {
+            background: var(--dark-bg);
+            color: var(--dark-text-color);
+        }
+        body.dark-mode .note, body.dark-mode .modal-content {
+            background: var(--dark-card-bg);
+            border-color: var(--dark-border-color);
+            box-shadow: var(--shadow-dark);
+        }
+        body.dark-mode input, body.dark-mode textarea {
+            background-color: #3a3a4c;
+            color: var(--dark-text-color);
+            border: 1px solid var(--dark-border-color);
+        }
+
+        /* Header (moved outside container) */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 0; /* Remove border-radius */
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); /* Add subtle shadow */
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Only bottom border */
+            color: #fff;
+            width: 100%; /* Full width */
+            box-sizing: border-box; /* Include padding in width */
+        }
+        .header-title { font-size: 1.5rem; font-weight: 600; }
+        .header-actions button {
+            background: #fff;
+            color: #764ba2;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+            margin-left: 15px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .header-actions button:hover {
+            transform: translateY(-2px);
+            background-color: #f0f0f0;
+        }
+        .header-actions button span {
+            display: none;
+        }
+        @media (min-width: 768px) {
+            .header-actions button span {
+                display: inline;
+            }
+        }
+        body.dark-mode .header-actions button { color: var(--dark-text-color); }
+
+        /* Controls Container (moved outside container) */
+        .controls-container {
+            width: 90%; /* Max width for content */
+            max-width: 1200px;
+            margin: 0 auto 2rem auto; /* Center and add margin */
+            padding: 0 20px; /* Add horizontal padding */
+            box-sizing: border-box;
+        }
+        #search-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+        }
+        #search-input::placeholder,
+        input[type="text"]::placeholder,
+        textarea::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        #search-input:focus,
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Main Container (only for notes grid) */
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            /* Removed background, shadow, blur, border here as it's now just for note grid */
+            color: #fff;
+            flex-grow: 1; /* Allow container to take remaining vertical space */
+        }
+
+        #notes-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+        .note {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            padding: 1rem; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+            border-left: 5px solid transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .note:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
+        .note-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+        .note-title { font-weight: 600; color: #fff; }
+        .note-content-preview {
+            height: 60px; overflow: hidden;
+            mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* ANPASSUNGEN HIER FÜR DAS PIN-SYMBOL */
+        .note-pin {
+            /* ANPASSUNG: Pin-Symbol etwas größer machen */
+            font-size: 1.5rem;
+            color: #ccc; /* Standardfarbe für nicht angepinnt */
+            transition: color 0.2s ease, text-shadow 0.2s ease;
+            cursor: pointer;
+        }
+
+        .note.pinned .note-pin {
+            color: var(--pinned-color); /* Deine Pinn-Farbe (Gelb) */
+            /* ANPASSUNG: Sehr dicker grüner Leuchteffekt */
+            text-shadow: 0 0 30px var(--pinned-highlight-color);
+        }
+        /* ENDE ANPASSUNGEN PIN-SYMBOL */
+
+        .modal {
+            display: none; position: fixed; z-index: 1000;
+            left: 0; top: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            justify-content: center; align-items: center;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem; border-radius: 12px;
+            width: 90%; max-width: 600px;
+            max-height: 90vh; overflow-y: auto;
+            position: relative;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+        .modal-close {
+            position: absolute; top: 15px; right: 20px;
+            font-size: 2rem; border: none; background: none; cursor: pointer;
+            color: #fff;
+        }
+        .modal-content h2, .modal-content h3 { margin-top: 0; color: #fff; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; color: #fff; }
+        .form-group input, .form-group textarea {
+            width: calc(100% - 24px);
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+        }
+        textarea { min-height: 150px; resize: vertical; }
+        .image-previews { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+        .img-preview-container { position: relative; }
+        .img-preview { width: 80px; height: 80px; object-fit: cover; border-radius: 5px; }
+        .img-delete-btn {
+            position: absolute; top: -5px; right: -5px;
+            background: red; color: white; border: none; border-radius: 50%;
+            width: 20px; height: 20px; cursor: pointer; font-weight: bold;
+        }
+        /* Adjusted styling for images within view modal */
+        #viewNoteContent .view-image {
+            max-width: 100%;
+            height: auto;
+            display: block; /* Ensures it takes its own line */
+            margin-bottom: 10px;
+            border-radius: 8px;
+        }
+        .view-actions { margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: flex-end; }
+        .btn-primary {
+            background: #fff;
+            color: #764ba2;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+            width: auto;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            background-color: #f0f0f0;
+        }
+        #create-note-btn {
+            position: fixed; bottom: 30px; right: 30px;
+            width: 60px; height: 60px;
+            border-radius: 50%; border: none;
+            background: #fff;
+            color: #764ba2;
+            font-size: 2rem;
+            cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            display: flex; justify-content: center; align-items: center;
+        }
+        /* Custom file input styling */
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .file-input-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .file-input-button {
+            border: none;
+            border-radius: 8px;
+            padding: 12px 25px;
+            background-color: #fff;
+            color: #764ba2;
+            cursor: pointer;
+            display: inline-block;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+        .file-input-button:hover {
+            transform: translateY(-2px);
+            background-color: #f0f0f0;
+        }
+        #selected-files-display {
+            margin-top: 5px;
+            font-size: 0.9em;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* Custom color input styling (single element) */
+        .custom-color-picker {
+            position: relative;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .custom-color-picker input[type="color"] {
+            position: absolute;
+            width: 150%;
+            height: 150%;
+            top: -25%;
+            left: -25%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        /* Custom Modal Styles (for notes.html) */
+        .custom-modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1001; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.7); /* Black w/ opacity */
+            backdrop-filter: blur(5px);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .custom-modal-content {
+            background: rgba(255, 255, 255, 0.15);
+            margin: auto;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .custom-modal-content h2 {
+            margin-top: 0;
+            color: #fff;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+        }
+
+        .custom-modal-content p {
+            color: #e0e0e0;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+
+        .custom-modal-buttons button {
+            background: #fff;
+            color: #764ba2;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+            margin: 0 10px;
+            width: auto; /* Override 100% width from general button style */
+        }
+
+        .custom-modal-buttons button:hover {
+            transform: translateY(-2px);
+            background-color: #f0f0f0;
+        }
+
+        .custom-modal-buttons .cancel-btn {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+
+        .custom-modal-buttons .cancel-btn:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-title"> Meine Notizen<span id="username-display"></span></div>
+        <div class="header-actions">
+            <button id="settings-btn" title="Einstellungen">⚙️<span>Einstellungen</span></button>
+            <button id="logout-btn" title="Abmelden">🚪<span>Abmelden</span></button>
+        </div>
+    </header>
+
+    <div class="controls-container">
+        <input type="text" id="search-input" placeholder="Notizen durchsuchen...">
+    </div>
+
+    <div class="container">
+        <main id="notes-container"></main>
+    </div>
+    <button id="create-note-btn" title="Neue Notiz erstellen">+</button>
+    <div id="note-modal" class="modal"></div>
+    <div id="view-modal" class="modal"></div>
+    <div id="settings-modal" class="modal"></div>
+
+    <!-- Custom Modal HTML -->
+    <div id="custom-modal" class="custom-modal">
+        <div class="custom-modal-content">
+            <h2 id="custom-modal-title"></h2>
+            <p id="custom-modal-message"></p>
+            <div class="custom-modal-buttons">
+                <button id="custom-modal-ok-btn">OK</button>
+                <button id="custom-modal-cancel-btn" class="cancel-btn" style="display:none;">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Custom Modal Functions
+        let resolveModalPromise;
+
+        function showMessage(message, title = 'Info') {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('custom-modal-title').textContent = title;
+            document.getElementById('custom-modal-message').textContent = message;
+            document.getElementById('custom-modal-cancel-btn').style.display = 'none'; // Hide cancel button
+            modal.style.display = 'flex'; // Show modal
+
+            return new Promise(resolve => {
+                resolveModalPromise = resolve;
+                document.getElementById('custom-modal-ok-btn').onclick = () => {
+                    modal.style.display = 'none';
+                    resolveModalPromise(true);
+                };
+            });
+        }
+
+        function showConfirm(message, callback, title = 'Bestätigung') {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('custom-modal-title').textContent = title;
+            document.getElementById('custom-modal-message').textContent = message;
+            document.getElementById('custom-modal-cancel-btn').style.display = 'inline-block'; // Show cancel button
+            modal.style.display = 'flex'; // Show modal
+
+            document.getElementById('custom-modal-ok-btn').onclick = () => {
+                modal.style.display = 'none';
+                if (callback) callback(true);
+            };
+            document.getElementById('custom-modal-cancel-btn').onclick = () => {
+                modal.style.display = 'none';
+                if (callback) callback(false);
+            };
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await fetchUsername(); // Fetch username on page load
+            loadNotes();
+            document.getElementById('create-note-btn').addEventListener('click', openCreateModal);
+            document.getElementById('settings-btn').addEventListener('click', openSettingsModal);
+            document.getElementById('logout-btn').addEventListener('click', logout);
+            document.getElementById('search-input').addEventListener('input', handleSearch);
+            document.addEventListener('click', (e) => {
+                // Close modal when clicking outside the modal content
+                if (e.target.classList.contains('modal')) {
+                    e.target.classList.remove('active');
+                }
+            });
+        });
+
+        // Function to fetch and display the username
+        async function fetchUsername() {
+            try {
+                const response = await fetch('/api/user'); // Assuming an API endpoint to get user info
+                if (response.ok) {
+                    const user = await response.json();
+                    document.getElementById('username-display').textContent = user.username;
+                } else {
+                    console.error('Failed to fetch username:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error fetching username:', error);
+            }
+        }
+
+        async function loadNotes() {
+            try {
+                const response = await fetch('/api/notes');
+                if (!response.ok) throw new Error('Fehler beim Laden');
+                const notes = await response.json();
+                renderNotes(notes);
+            } catch(error) {
+                console.error(error);
+                showMessage('Notizen konnten nicht geladen werden.', 'Fehler');
+                document.getElementById('notes-container').innerHTML = '<p>Notizen konnten nicht geladen werden.</p>';
+            }
+        }
+
+        function renderNotes(notes) {
+            const container = document.getElementById('notes-container');
+            if (notes.length === 0) {
+                container.innerHTML = '<h2>Keine Notizen vorhanden. Erstelle deine erste!</h2>';
+                return;
+            }
+            container.innerHTML = notes.map(note => `
+                <div class="note ${note.isPinned ? 'pinned' : ''}" data-note-id="${note.id}" style="border-left-color: ${note.color};">
+                    <div class="note-header">
+                        <div class="note-title">${note.content.substring(0, 30)}...</div>
+                        <div class="note-pin" title="Notiz anpinnen/lösen">${note.isPinned ? '🔴' : '📌'}</div>
+                    </div>
+                    <div class="note-content-preview">${note.content.replace(/\n/g, '<br>')}</div>
+                </div>
+            `).join('');
+            document.querySelectorAll('.note').forEach(noteEl => {
+                noteEl.querySelector('.note-pin').addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent opening the note when clicking the pin icon
+                    togglePin(noteEl.dataset.noteId);
+                });
+                noteEl.addEventListener('click', () => openViewModal(noteEl.dataset.noteId));
+            });
+        }
+
+        function openCreateModal() {
+            const modal = document.getElementById('note-modal');
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <button class="modal-close">&times;</button>
+                    <h2>Neue Notiz erstellen</h2>
+                    <form id="note-form">
+                        <div class="form-group">
+                            <label for="content">Inhalt</label>
+                            <textarea name="content" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="color">Farbe</label>
+                            <div class="custom-color-picker" style="background-color: #ffffff;">
+                                <input type="color" id="noteColor" name="color" value="#ffffff">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="images-upload">Bilder hochladen</label>
+                            <div class="file-input-wrapper">
+                                <input type="file" id="images-upload" name="images" multiple accept="image/*">
+                                <button type="button" class="file-input-button">Dateien auswählen</button>
+                            </div>
+                            <div id="selected-files-display"></div>
+                        </div>
+                        <button type="submit" class="btn-primary">Speichern</button>
+                    </form>
+                </div>
+            `;
+            modal.classList.add('active');
+            modal.querySelector('.modal-close').addEventListener('click', () => modal.classList.remove('active'));
+            modal.querySelector('form').addEventListener('submit', handleCreateSubmit);
+
+            // Handle custom file input display
+            const fileInput = modal.querySelector('#images-upload');
+            const selectedFilesDisplay = modal.querySelector('#selected-files-display');
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length > 0) {
+                    selectedFilesDisplay.textContent = `Ausgewählte Dateien: ${Array.from(fileInput.files).map(f => f.name).join(', ')}`;
+                } else {
+                    selectedFilesDisplay.textContent = '';
+                }
+            });
+
+            // Handle color input change
+            const colorInput = modal.querySelector('#noteColor');
+            const customColorPicker = modal.querySelector('.custom-color-picker');
+            colorInput.addEventListener('input', (e) => {
+                customColorPicker.style.backgroundColor = e.target.value;
+            });
+        }
+
+        async function handleCreateSubmit(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch('/api/notes', { method: 'POST', body: formData });
+                if (!response.ok) throw new Error('Fehler');
+                document.getElementById('note-modal').classList.remove('active');
+                loadNotes(); // Reload notes to display the new one
+                showMessage('Notiz erfolgreich erstellt!', 'Erfolg');
+            } catch(err) {
+                console.error('Speichern fehlgeschlagen:', err);
+                showMessage('Speichern fehlgeschlagen.', 'Fehler');
+            }
+        }
+
+        async function togglePin(noteId) {
+            try {
+                const response = await fetch(`/api/notes/${noteId}/pin`, { method: 'PUT' });
+                if (!response.ok) throw new Error('Pin-Status konnte nicht geändert werden.');
+                loadNotes(); // Reload notes to reflect the pin status change
+            } catch (error) {
+                console.error(error);
+                showMessage(error.message, 'Fehler');
+            }
+        }
+
+        async function logout() {
+            const confirmed = await showConfirm('Möchtest du dich wirklich abmelden?', 'Abmelden bestätigen');
+            if (confirmed) {
+                await fetch('/logout');
+                window.location.href = '/login.html'; // Redirect to login page after logout
+            }
+        }
+
+        function handleSearch(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            document.querySelectorAll('.note').forEach(note => {
+                const content = note.querySelector('.note-content-preview').textContent.toLowerCase();
+                note.style.display = content.includes(searchTerm) ? '' : 'none';
+            });
+        }
+
+        async function openViewModal(noteId) {
+            try {
+                const response = await fetch(`/api/notes/${noteId}`);
+                if (!response.ok) throw new Error('Notiz konnte nicht geladen werden.');
+                const note = await response.json();
+                const modal = document.getElementById('view-modal');
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <button class="modal-close">&times;</button>
+                        <h2>Notiz anzeigen</h2>
+                        <div id="viewNoteContent">${note.content.replace(/\n/g, '<br>')}
+                            ${note.images && note.images.length > 0 ? `
+                                <div class="view-images-container">
+                                    ${note.images.map(image => `
+                                        <img src="/uploads/${image}" alt="Notizbild" class="view-image">
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                        <div class="view-actions">
+                            <button onclick="openEditModal('${note.id}')" class="btn-primary">Bearbeiten</button>
+                            <button onclick="handleDeleteNoteConfirm('${note.id}')" class="btn-primary">Löschen</button>
+                        </div>
+                    </div>
+                `;
+                modal.classList.add('active');
+                modal.querySelector('.modal-close').addEventListener('click', () => modal.classList.remove('active'));
+            } catch (error) {
+                console.error(error);
+                showMessage(error.message, 'Fehler');
+            }
+        }
+
+        async function openEditModal(noteId) {
+            // Close the view modal if it's open to prevent two popups
+            document.getElementById('view-modal').classList.remove('active');
+
+            try {
+                const response = await fetch(`/api/notes/${noteId}`);
+                if (!response.ok) throw new Error('Notiz konnte nicht geladen werden.');
+                const note = await response.json();
+                const modal = document.getElementById('note-modal');
+                modal.innerHTML = `
+                    <div class="modal-content">
+                        <button class="modal-close">&times;</button>
+                        <h2>Notiz bearbeiten</h2>
+                        <form id="edit-note-form">
+                            <input type="hidden" name="id" value="${note.id}">
+                            <div class="form-group">
+                                <label for="content">Inhalt</label>
+                                <textarea name="content" required>${note.content}</textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="color">Farbe</label>
+                                <div class="custom-color-picker" style="background-color: ${note.color};">
+                                    <input type="color" id="editNoteColor" name="color" value="${note.color}">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="newImages">Weitere Bilder hochladen</label>
+                                <div class="file-input-wrapper">
+                                    <input type="file" id="edit-images-upload" name="newImages" multiple accept="image/*">
+                                    <button type="button" class="file-input-button">Dateien auswählen</button>
+                                </div>
+                                <div id="edit-selected-files-display"></div>
+                            </div>
+                            ${note.images && note.images.length > 0 ? `
+                                <div class="form-group">
+                                    <label>Aktuelle Bilder</label>
+                                    <div class="image-previews">
+                                        ${note.images.map(image => `
+                                            <div class="img-preview-container">
+                                                <img src="/uploads/${image}" alt="Notizbild" class="img-preview">
+                                                <button type="button" class="img-delete-btn" onclick="handleDeleteImageConfirm('${note.id}', '${image}')">×</button>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                            <button type="submit" class="btn-primary">Speichern</button>
+                        </form>
+                    </div>
+                `;
+                modal.classList.add('active');
+                modal.querySelector('.modal-close').addEventListener('click', () => modal.classList.remove('active'));
+                modal.querySelector('form').addEventListener('submit', handleEditSubmit);
+
+                // Handle custom file input display for edit modal
+                const editFileInput = modal.querySelector('#edit-images-upload');
+                const editSelectedFilesDisplay = modal.querySelector('#edit-selected-files-display');
+                editFileInput.addEventListener('change', () => {
+                    if (editFileInput.files.length > 0) {
+                        editSelectedFilesDisplay.textContent = `Ausgewählte Dateien: ${Array.from(editFileInput.files).map(f => f.name).join(', ')}`;
+                    } else {
+                        editSelectedFilesDisplay.textContent = '';
+                    }
+                });
+
+                // Handle color input change for edit modal
+                const editColorInput = modal.querySelector('#editNoteColor');
+                const editCustomColorPicker = modal.querySelector('.custom-color-picker');
+                editColorInput.addEventListener('input', (e) => {
+                    editCustomColorPicker.style.backgroundColor = e.target.value;
+                });
+
+            } catch (error) {
+                console.error(error);
+                showMessage(error.message, 'Fehler');
+            }
+        }
+
+        async function handleEditSubmit(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            const noteId = formData.get('id');
+
+            try {
+                const response = await fetch(`/api/notes/${noteId}`, { method: 'PUT', body: formData });
+                if (!response.ok) throw new Error('Fehler beim Aktualisieren der Notiz.');
+                document.getElementById('note-modal').classList.remove('active');
+                loadNotes(); // Reload notes to display updated content
+                showMessage('Notiz erfolgreich aktualisiert!', 'Erfolg');
+            } catch (err) {
+                console.error('Aktualisieren fehlgeschlagen:', err);
+                showMessage('Aktualisieren fehlgeschlagen.', 'Fehler');
+            }
+        }
+
+        async function handleDeleteNoteConfirm(noteId) {
+            showConfirm('Möchtest du diese Notiz wirklich löschen?', async (confirmed) => {
+                if (confirmed) {
+                    try {
+                        const response = await fetch(`/api/notes/${noteId}`, { method: 'DELETE' });
+                        if (!response.ok) throw new Error('Fehler beim Löschen der Notiz.');
+                        document.getElementById('view-modal').classList.remove('active'); // Close view modal
+                        loadNotes(); // Reload notes to remove the deleted one
+                        showMessage('Notiz erfolgreich gelöscht.', 'Erfolg');
+                    } catch (error) {
+                        console.error(error);
+                        showMessage(error.message, 'Fehler');
+                    }
+                }
+            }, 'Notiz löschen');
+        }
+
+        async function handleDeleteImageConfirm(noteId, filename) {
+            showConfirm('Möchtest du dieses Bild wirklich löschen?', async (confirmed) => {
+                if (confirmed) {
+                    try {
+                        const response = await fetch(`/api/notes/${noteId}/images/${filename}`, { method: 'DELETE' });
+                        if (!response.ok) throw new Error('Fehler beim Löschen des Bildes.');
+                        openEditModal(noteId); // Re-open edit modal to refresh image list
+                        showMessage('Bild erfolgreich gelöscht.', 'Erfolg');
+                    } catch (error) {
+                        console.error(error);
+                        showMessage(error.message, 'Fehler');
+                    }
+                }
+            }, 'Bild löschen');
+        }
+
+        function openSettingsModal() {
+            const modal = document.getElementById('settings-modal');
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <button class="modal-close">&times;</button>
+                    <h2>Einstellungen</h2>
+                    <form id="settings-form">
+                        <h3>Passwort ändern</h3>
+                        <div class="form-group">
+                            <label for="currentPassword">Aktuelles Passwort</label>
+                            <input type="password" name="currentPassword" required autocomplete="current-password">
+                        </div>
+                        <div class="form-group">
+                            <label for="newPassword">Neues Passwort</label>
+                            <input type="password" name="newPassword" id="newPasswordInput" autocomplete="new-password">
+                        </div>
+                        <div class="form-group">
+                            <label for="confirmNewPassword">Neues Passwort bestätigen</label>
+                            <input type="password" name="confirmNewPassword" id="confirmNewPasswordInput" autocomplete="new-password">
+                        </div>
+
+                        <h3>Benutzername ändern</h3>
+                        <div class="form-group">
+                            <label for="newUsername">Neuer Benutzername</label>
+                            <input type="text" name="newUsername" autocomplete="username">
+                        </div>
+                        
+                        <button type="submit" class="btn-primary">Speichern</button>
+                    </form>
+                </div>
+            `;
+            modal.classList.add('active');
+            modal.querySelector('.modal-close').addEventListener('click', () => modal.classList.remove('active'));
+            modal.querySelector('form').addEventListener('submit', handleSettingsSubmit);
+        }
+
+        async function handleSettingsSubmit(e) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            const data = {
+                currentPassword: formData.get('currentPassword'),
+                newUsername: formData.get('newUsername'),
+                newPassword: formData.get('newPassword'),
+                confirmNewPassword: formData.get('confirmNewPassword')
+            };
+
+            if (data.newPassword && data.newPassword !== data.confirmNewPassword) {
+                showMessage('Neues Passwort und Bestätigung stimmen nicht überein.', 'Fehler');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/user/settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Fehler beim Aktualisieren der Einstellungen.');
+                }
+                const result = await response.json();
+                showMessage('Einstellungen erfolgreich aktualisiert!', 'Erfolg');
+                if (result.newUsername) {
+                    document.getElementById('username-display').textContent = result.newUsername;
+                }
+                document.getElementById('settings-modal').classList.remove('active');
+            } catch (err) {
+                console.error('Aktualisieren der Einstellungen fehlgeschlagen:', err);
+                showMessage('Aktualisieren der Einstellungen fehlgeschlagen: ' + err.message, 'Fehler');
+            }
+        }
+    </script>
+</body>
+</html>

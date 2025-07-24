@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Notizen App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #fff;
+        }
+        .login-container {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        h1 {
+            margin-bottom: 25px;
+            font-weight: 600;
+            font-size: 2.2em;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 400;
+            font-size: 0.95em;
+        }
+        input[type="text"],
+        input[type="password"] {
+            width: calc(100% - 24px);
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 1em;
+            transition: border-color 0.3s ease, background-color 0.3s ease;
+        }
+        input[type="text"]::placeholder,
+        input[type="password"]::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        button {
+            background: #fff;
+            color: #764ba2;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+            width: 100%;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            background-color: #f0f0f0;
+        }
+        .message {
+            margin-top: 20px;
+            color: #ffdddd;
+            font-weight: 500;
+        }
+        .register-link {
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+        .register-link a {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 600;
+            transition: opacity 0.2s ease;
+        }
+        .register-link a:hover {
+            opacity: 0.8;
+        }
+
+        /* Custom Modal Styles */
+        .custom-modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1001; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.7); /* Black w/ opacity */
+            backdrop-filter: blur(5px);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .custom-modal-content {
+            background: rgba(255, 255, 255, 0.15);
+            margin: auto;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .custom-modal-content h2 {
+            margin-top: 0;
+            color: #fff;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+        }
+
+        .custom-modal-content p {
+            color: #e0e0e0;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+
+        .custom-modal-buttons button {
+            background: #fff;
+            color: #764ba2;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+            margin: 0 10px;
+            width: auto; /* Override 100% width from general button style */
+        }
+
+        .custom-modal-buttons button:hover {
+            transform: translateY(-2px);
+            background-color: #f0f0f0;
+        }
+
+        .custom-modal-buttons .cancel-btn {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+
+        .custom-modal-buttons .cancel-btn:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>Willkommen</h1>
+        <form action="/login" method="POST">
+            <div class="form-group">
+                <label for="username">Benutzername:</label>
+                <input type="text" id="username" name="username" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label for="password">Passwort:</label>
+                <input type="password" id="password" name="password" required autocomplete="current-password">
+            </div>
+            <button type="submit">Anmelden</button>
+        </form>
+        <p id="error-message" class="message"></p>
+        <p class="register-link">Noch kein Konto? <a href="/register.html">Hier registrieren</a></p>
+    </div>
+
+    <!-- Custom Modal HTML -->
+    <div id="custom-modal" class="custom-modal">
+        <div class="custom-modal-content">
+            <h2 id="custom-modal-title"></h2>
+            <p id="custom-modal-message"></p>
+            <div class="custom-modal-buttons">
+                <button id="custom-modal-ok-btn">OK</button>
+                <button id="custom-modal-cancel-btn" class="cancel-btn" style="display:none;">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Custom Modal Functions
+        let resolveModalPromise;
+
+        function showMessage(message, title = 'Info') {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('custom-modal-title').textContent = title;
+            document.getElementById('custom-modal-message').textContent = message;
+            document.getElementById('custom-modal-cancel-btn').style.display = 'none'; // Hide cancel button
+            modal.style.display = 'flex'; // Show modal
+
+            return new Promise(resolve => {
+                resolveModalPromise = resolve;
+                document.getElementById('custom-modal-ok-btn').onclick = () => {
+                    modal.style.display = 'none';
+                    resolveModalPromise(true);
+                };
+            });
+        }
+
+        function showConfirm(message, callback, title = 'Bestätigung') {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('custom-modal-title').textContent = title;
+            document.getElementById('custom-modal-message').textContent = message;
+            document.getElementById('custom-modal-cancel-btn').style.display = 'inline-block'; // Show cancel button
+            modal.style.display = 'flex'; // Show modal
+
+            document.getElementById('custom-modal-ok-btn').onclick = () => {
+                modal.style.display = 'none';
+                if (callback) callback(true);
+            };
+            document.getElementById('custom-modal-cancel-btn').onclick = () => {
+                modal.style.display = 'none';
+                if (callback) callback(false);
+            };
+        }
+
+        // Display error message from URL query parameters
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const errorMessage = urlParams.get('error');
+            if (errorMessage) {
+                // Use custom message box instead of direct text content
+                showMessage(errorMessage, 'Fehler');
+            }
+        });
+    </script>
+</body>
+</html>
