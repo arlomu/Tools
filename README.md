@@ -4,8 +4,8 @@
 [![Bug](https://img.shields.io/badge/Bug-red?style=for-the-badge&logo=github)](https://github.com/arlomu/Tools/issues/new?template=bug.yml)
 ---
 
-## ✨ Content / Tools
-To set up and run this project locally, follow these steps:
+## ✨ To set up and run a project locally, follow these steps:
+
     cd Tools
 
 
