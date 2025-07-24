@@ -11,5 +11,3 @@ To set up and run this project locally, follow these steps:
 
     cd (Tool Name)
     # READ the README.md!
-    ```
-    ```
