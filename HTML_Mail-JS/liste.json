@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Entwickler Team",
+    "emails": "dev1@example.com,dev2@example.com,dev3@example.com"
+  },
+  {
+    "name": "Management Team",
+    "emails": "manager1@example.com,manager2@example.com"
+  },
+  {
+    "name": "Support Team",
+    "emails": "support@example.com,help@example.com"
+  }
+]
