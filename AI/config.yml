@@ -9,7 +9,22 @@ server:
 # Ollama-Einstellungen
 ollama:
   host: "http://localhost:11434"
-  model: "qwen2.5-coder:7b"
+
+  models:
+    deepseek-r1:
+      display_name: "DeepSeek R1 (reasoning) Fast: Middle"
+      model_name: "deepseek-r1:1.5b"
+    
+    gemma2:
+      display_name: "Gemma 2 (normal) Fast: Slow"
+      model_name: "gemma2:27b"
+    
+    coder:
+      display_name: "Qwen 2.5 Coding (normal) Fast: "
+      model_name: "qwen2.5-coder:7b"
+    fast:
+      display_name: "Mistral Lite (normal) Fast: Ultra"
+      model_name: "mapler/lite-mistral-150m-instruct:latest"
   
 # System-Prompt für die AI
 system_prompt: |
