@@ -21,22 +21,43 @@ try {
     process.exit(1);
 }
 
+// Chat-Datenbank
+const CHAT_FILE = 'chat.json';
+
+// Funktion zum Laden der Chats
+function loadChats() {
+    try {
+        if (fs.existsSync(CHAT_FILE)) {
+            const data = fs.readFileSync(CHAT_FILE, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (e) {
+        console.error('Fehler beim Laden der Chat-Daten:', e);
+    }
+    return { messages: [], createdAt: new Date().toISOString() };
+}
+
+// Funktion zum Speichern der Chats
+function saveChats(chatData) {
+    try {
+        const dataToSave = {
+            messages: chatData.messages,
+            createdAt: chatData.createdAt,
+            updatedAt: new Date().toISOString()
+        };
+        fs.writeFileSync(CHAT_FILE, JSON.stringify(dataToSave, null, 2));
+    } catch (e) {
+        console.error('Fehler beim Speichern der Chat-Daten:', e);
+    }
+}
+
 app.use(express.static('public'));
 app.use(express.json());
-
-// Chat-Sessions speichern
-const chatSessions = new Map();
 
 // Funktion zum Abrufen des Website-Titels
 async function getWebsiteTitle(url) {
     try {
         const response = await axios.get(url, { timeout: 5000 });
-
-// Hilfsfunktionen
-function generateChatTitle(firstMessage) {
-    const words = firstMessage.trim().split(' ').slice(0, 4);
-    return words.join(' ') + (firstMessage.split(' ').length > 4 ? '...' : '');
-}
         const dom = new JSDOM(response.data);
         const title = dom.window.document.querySelector('title');
         return title ? title.textContent.trim() : url;
@@ -45,70 +66,91 @@ function generateChatTitle(firstMessage) {
     }
 }
 
-// Socket.IO Connection
+// Aktive Streams verwalten
+const activeStreams = new Map();
+
 io.on('connection', (socket) => {
     console.log('Neuer Client verbunden:', socket.id);
 
-    // Neue Chat-Session erstellen
-    socket.on('new_chat', () => {
-        const chatId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        chatSessions.set(chatId, []);
-        socket.emit('chat_created', { chatId, title: 'Neuer Chat' });
+    // Aktiven Stream beim Trennen beenden
+    socket.on('disconnect', () => {
+        if (activeStreams.has(socket.id)) {
+            activeStreams.get(socket.id).abort();
+            activeStreams.delete(socket.id);
+        }
     });
 
-    // Chat-Nachricht senden
+    // Chat laden
+    socket.on('load_chat', () => {
+        const chatData = loadChats();
+        socket.emit('chat_loaded', chatData);
+    });
+
+    // Nachricht senden
     socket.on('send_message', async (data) => {
-        const { chatId, message } = data;
+        const { message } = data;
+        let chatData = loadChats();
         
-        if (!chatSessions.has(chatId)) {
-            chatSessions.set(chatId, []);
+        // Nutzernachricht hinzufügen
+        chatData.messages.push({ role: 'user', content: message });
+        saveChats(chatData);
+        
+        // Vorherigen Stream beenden falls vorhanden
+        if (activeStreams.has(socket.id)) {
+            activeStreams.get(socket.id).abort();
+            activeStreams.delete(socket.id);
         }
 
-        const chatHistory = chatSessions.get(chatId);
-        chatHistory.push({ role: 'user', content: message });
+        const abortController = new AbortController();
+        activeStreams.set(socket.id, abortController);
 
         try {
-            // Streaming-Request an Ollama
+            const startTime = Date.now();
+            let tokenCount = 0;
+            let aiResponse = '';
+            let responseId = Date.now();
+
             const response = await axios.post('http://localhost:11434/api/chat', {
                 model: config.ollama.model,
                 messages: [
                     { role: 'system', content: config.system_prompt },
-                    ...chatHistory
+                    ...chatData.messages
                 ],
                 stream: true
             }, {
-                responseType: 'stream'
+                responseType: 'stream',
+                signal: abortController.signal
             });
 
-            let aiResponse = '';
-            
             response.data.on('data', async (chunk) => {
                 const lines = chunk.toString().split('\n').filter(line => line.trim());
                 
                 for (const line of lines) {
                     try {
                         const data = JSON.parse(line);
-                        if (data.message && data.message.content) {
+                        if (data.message?.content) {
                             aiResponse += data.message.content;
+                            tokenCount++;
                             
-                            // Live-Update an Client senden
-                            const formattedChunk = await formatMessage(aiResponse);
                             socket.emit('message_streaming', {
-                                chatId,
-                                message: formattedChunk,
-                                raw: aiResponse,
+                                responseId,
+                                content: await formatMessage(aiResponse),
                                 done: data.done || false
                             });
                         }
-                        
+
                         if (data.done) {
-                            chatHistory.push({ role: 'assistant', content: aiResponse });
-                            
-                            // Chat-Titel automatisch generieren
-                            if (chatHistory.length === 2) { // Erste Nachricht
-                                const title = generateChatTitle(message);
-                                socket.emit('chat_title_updated', { chatId, title });
-                            }
+                            const endTime = Date.now();
+                            chatData.messages.push({
+                                role: 'assistant',
+                                content: aiResponse,
+                                stats: {
+                                    tokens: tokenCount,
+                                    duration: ((endTime - startTime) / 1000).toFixed(2)
+                                }
+                            });
+                            saveChats(chatData);
+                            activeStreams.delete(socket.id);
                         }
                     } catch (e) {
                         // JSON Parse Fehler ignorieren
@@ -117,78 +159,70 @@ io.on('connection', (socket) => {
             });
 
             response.data.on('end', () => {
-                if (!aiResponse) {
-                    socket.emit('error', 'Keine Antwort von der AI erhalten');
-                }
+                activeStreams.delete(socket.id);
             });
 
         } catch (error) {
-            console.error('Ollama Fehler:', error);
-            socket.emit('error', 'Fehler bei der Kommunikation mit der AI');
+            if (!axios.isCancel(error)) {
+                console.error('Ollama Fehler:', error);
+                socket.emit('error', 'Fehler bei der Kommunikation mit der AI');
+            }
+            activeStreams.delete(socket.id);
         }
     });
 
-    // Chat laden
-    socket.on('load_chat', (chatId) => {
-        if (chatSessions.has(chatId)) {
-            const history = chatSessions.get(chatId);
-            socket.emit('chat_loaded', { chatId, history });
+    // Chat zurücksetzen
+    socket.on('reset_chat', () => {
+        if (activeStreams.has(socket.id)) {
+            activeStreams.get(socket.id).abort();
+            activeStreams.delete(socket.id);
         }
+        const chatData = { messages: [], createdAt: new Date().toISOString() };
+        saveChats(chatData);
+        socket.emit('chat_reset');
     });
 
-    // Chat löschen
-    socket.on('delete_chat', (chatId) => {
-        if (chatSessions.has(chatId)) {
-            chatSessions.delete(chatId);
-            socket.emit('chat_deleted', { chatId });
-        }
-    });
+    // Nachrichtenformatierung
+    async function formatMessage(message) {
+        let formatted = message;
 
-    socket.on('disconnect', () => {
-        console.log('Client getrennt:', socket.id);
-    });
-});
+        // Code-Blöcke mit Kopier-Button
+        formatted = formatted.replace(/```(\w+)?\n?([\s\S]*?)```/g, (match, lang, code) => {
+            const language = lang || 'text';
+            const codeId = `code_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            
+            return `<div class="code-block" data-lang="${language}">
+                <div class="code-header">
+                    <span class="code-lang">${language}</span>
+                    <button class="copy-btn" onclick="copyCode('${codeId}')">
+                        <i class="fas fa-copy"></i> Kopieren
+                    </button>
+                </div>
+                <pre><code id="${codeId}" class="language-${language}">${code.trim()}</code></pre>
+            </div>`;
+        });
 
-// Nachrichtenformatierung
-async function formatMessage(message) {
-    let formatted = message;
+        // Inline-Code fett
+        formatted = formatted.replace(/`([^`]+)`/g, '<strong class="inline-code">$1</strong>');
 
-    // Code-Blöcke mit Kopier-Button
-    formatted = formatted.replace(/```(\w+)?\n?([\s\S]*?)```/g, (match, lang, code) => {
-        const language = lang || 'text';
-        const codeId = `code_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        // URLs zu anklickbaren Links mit Website-Titel
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const urls = formatted.match(urlRegex);
         
-        return `<div class="code-block" data-lang="${language}">
-            <div class="code-header">
-                <span class="code-lang">${language}</span>
-                <button class="copy-btn" onclick="copyCode('${codeId}')">
-                    <i class="fas fa-copy"></i> Kopieren
-                </button>
-            </div>
-            <pre><code id="${codeId}" class="language-${language}">${code.trim()}</code></pre>
-        </div>`;
-    });
-
-    // Inline-Code fett
-    formatted = formatted.replace(/`([^`]+)`/g, '<strong class="inline-code">$1</strong>');
-
-    // URLs zu anklickbaren Links mit Website-Titel
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const urls = formatted.match(urlRegex);
-    
-    if (urls) {
-        for (const url of urls) {
-            const title = await getWebsiteTitle(url);
-            formatted = formatted.replace(url, 
-                `<a href="${url}" target="_blank" rel="noopener noreferrer" class="url-link">
-                    <i class="fas fa-external-link-alt"></i> ${title}
-                </a>`
-            );
+        if (urls) {
+            for (const url of urls) {
+                const title = await getWebsiteTitle(url);
+                formatted = formatted.replace(url, 
+                    `<a href="${url}" target="_blank" rel="noopener noreferrer" class="url-link">
+                        <i class="fas fa-external-link-alt"></i> ${title}
+                    </a>`
+                );
+            }
         }
-    }
 
-    return formatted;
-}
+        return formatted;
+    }
+});
 
 // Server starten
 const PORT = config.server.port || 3000;
