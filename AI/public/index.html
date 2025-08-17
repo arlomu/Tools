@@ -32,14 +32,18 @@
             color: var(--text);
             height: 100vh;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
         .container {
             display: flex;
+            flex: 1;
             height: 100vh;
             max-width: 100%;
             margin: 0;
             background: var(--background);
+            flex-direction: column;
         }
 
         /* Main Chat */
@@ -48,6 +52,7 @@
             display: flex;
             flex-direction: column;
             background: var(--background);
+            position: relative;
         }
 
         .chat-header {
@@ -55,32 +60,13 @@
             background: var(--surface);
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
         }
 
         .chat-title {
             font-size: 18px;
             font-weight: 600;
-        }
-
-        .reset-btn {
-            background: var(--surface-light);
-            color: var(--error);
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .reset-btn:hover {
-            background: var(--error);
-            color: white;
         }
 
         .chat-messages {
@@ -108,6 +94,19 @@
             font-size: 15px;
             line-height: 1.6;
             position: relative;
+        }
+        
+        /* Smooth typing effect */
+        .message.ai .message-content.typing-content {
+            white-space: pre-wrap;
+            overflow: hidden;
+            border-right: 2px solid transparent;
+            animation: typing-cursor .75s step-end infinite;
+        }
+
+        @keyframes typing-cursor {
+            from, to { border-color: transparent; }
+            50% { border-color: var(--text-secondary); }
         }
 
         .message.user .message-content {
@@ -140,11 +139,10 @@
             order: 2;
         }
 
-        .message.ai .message-content {
-            background: var(--surface);
+        .message.ai .message-avatar {
+            background: var(--surface-light);
             color: var(--text);
-            border-bottom-left-radius: 4px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            order: 1;
         }
 
         .message-stats {
@@ -212,10 +210,21 @@
 
         /* Input Area */
         .input-area {
-            padding: 16px;
             background: var(--surface);
             border-top: 1px solid rgba(255, 255, 255, 0.05);
             position: relative;
+            padding: 16px;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .input-wrapper {
+            max-width: 800px; /* Begrenzt die Breite des Eingabebereichs */
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
         }
 
         .input-container {
@@ -226,6 +235,7 @@
             border-radius: 12px;
             padding: 10px 16px;
             transition: all 0.2s ease;
+            width: 100%;
         }
 
         .input-container:focus-within {
@@ -249,7 +259,7 @@
             color: var(--text-secondary);
         }
 
-        #sendBtn {
+        #sendBtn, .reset-btn {
             background: var(--primary);
             color: white;
             border: none;
@@ -263,6 +273,17 @@
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+        
+        .reset-btn {
+            background: var(--error);
+            color: white;
+            padding: 0;
+            width: auto;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+            padding: 8px 16px;
         }
 
         #sendBtn:hover:not(:disabled) {
@@ -278,6 +299,19 @@
         #sendBtn.stop-generation {
             background: var(--error);
             animation: pulse 1.5s infinite;
+            border-radius: 8px; /* Rechteckige Form für Stop-Button */
+            width: auto;
+            padding: 0 16px;
+            transition: none;
+        }
+        
+        #sendBtn.stop-generation i {
+            display: none;
+        }
+        
+        #sendBtn.stop-generation::after {
+            content: 'Stoppen';
+            display: inline;
         }
 
         #sendBtn.stop-generation:hover {
@@ -355,9 +389,6 @@
         <div class="main-chat">
             <div class="chat-header">
                 <div class="chat-title" id="chatTitle">Tontoo AI</div>
-                <button class="reset-btn" id="resetChatBtn" style="display: none;">
-                    <i class="fas fa-trash"></i> Chat löschen
-                </button>
             </div>
             <div class="chat-messages" id="chatMessages">
                 <div class="welcome-message">
@@ -380,16 +411,21 @@
                 </div>
             </div>
             <div class="input-area">
-                <div class="input-container">
-                    <textarea 
-                        id="messageInput" 
-                        placeholder="Schreiben Sie Ihre Nachricht..." 
-                        rows="1"
-                        onkeypress="handleKeyPress(event)"
-                    ></textarea>
-                    <button id="sendBtn" onclick="sendMessage()">
-                        <i class="fas fa-paper-plane"></i>
+                <div class="input-wrapper">
+                    <button class="reset-btn" id="resetChatBtn">
+                        <i class="fas fa-trash"></i> Chat löschen
                     </button>
+                    <div class="input-container">
+                        <textarea
+                            id="messageInput"
+                            placeholder="Schreiben Sie Ihre Nachricht..."
+                            rows="1"
+                            onkeypress="handleKeyPress(event)"
+                        ></textarea>
+                        <button id="sendBtn" onclick="sendMessage()">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -418,7 +454,7 @@
                     if (msg.role === 'user') {
                         addMessage('user', msg.content);
                     } else {
-                        const stats = msg.stats ? 
+                        const stats = msg.stats ?
                             `<div class="message-stats">
                                 <span><i class="fas fa-bolt"></i> ${msg.stats.tokens} Tokens</span>
                                 <span><i class="fas fa-clock"></i> ${msg.stats.duration}s</span>
@@ -428,31 +464,60 @@
                 });
             }
         });
+        
+        // Final event with stats
+        socket.on('message_completed', (data) => {
+            const statsHtml = `<div class="message-stats">
+                <span><i class="fas fa-bolt"></i> ${data.stats.tokens} Tokens</span>
+                <span><i class="fas fa-clock"></i> ${data.stats.duration}s</span>
+            </div>`;
+            
+            if (currentStreamingElement) {
+                 const contentDiv = currentStreamingElement.querySelector('.message-content');
+                 contentDiv.innerHTML = data.content + statsHtml;
+            } else {
+                // Fallback, falls Element nicht gefunden
+                addMessage('ai', data.content + statsHtml);
+            }
+            
+            setTimeout(() => {
+                Prism.highlightAll();
+                document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+            }, 100);
+            
+            currentResponseId = null;
+            currentStreamingElement = null;
+            isGenerating = false;
+            updateSendButton();
+        });
 
         socket.on('message_streaming', (data) => {
             if (currentResponseId !== data.responseId) {
-                // Neue Antwort starten
-                currentResponseId = data.responseId;
                 removeTypingIndicator();
-                currentStreamingElement = addMessage('ai', data.content, true);
-            } else {
-                // Bestehende Antwort aktualisieren
-                updateStreamingMessage(currentStreamingElement, data.content);
+                currentResponseId = data.responseId;
+                currentStreamingElement = addMessage('ai', '', true);
+                isGenerating = true;
+                updateSendButton();
             }
             
-            isGenerating = !data.done;
-            updateSendButton();
-            
-            if (data.done) {
-                currentResponseId = null;
-                currentStreamingElement = null;
-                setTimeout(() => Prism.highlightAll(), 100);
-            }
+            // Smooth typing effect
+            typeContent(currentStreamingElement, data.content);
         });
 
         socket.on('chat_reset', () => {
             updateUIState(false);
             clearMessages();
+        });
+        
+        socket.on('streaming_stopped', () => {
+            isGenerating = false;
+            updateSendButton();
+            removeTypingIndicator();
+            if (currentStreamingElement) {
+                currentStreamingElement.querySelector('.message-content').classList.remove('typing-content');
+            }
+            currentResponseId = null;
+            currentStreamingElement = null;
         });
 
         socket.on('error', (error) => {
@@ -475,16 +540,15 @@
             const message = input.value.trim();
             
             if (isGenerating) {
-                // Generierung stoppen
                 socket.emit('stop_generation');
-                isGenerating = false;
-                updateSendButton();
                 return;
             }
 
             if (message) {
                 addMessage('user', message);
                 showTypingIndicator();
+                isGenerating = true;
+                updateSendButton();
                 socket.emit('send_message', { message });
                 input.value = '';
                 adjustTextareaHeight(input);
@@ -500,24 +564,24 @@
             const avatar = type === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
             messageDiv.innerHTML = `
                 <div class="message-avatar">${avatar}</div>
-                <div class="message-content">${content}</div>
+                <div class="message-content ${isStreaming ? 'typing-content' : ''}">${content}</div>
             `;
             
             messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
             
             if (!isStreaming) {
-                messagesDiv.scrollTop = messagesDiv.scrollHeight;
                 Prism.highlightAllUnder(messageDiv);
             }
             
             return messageDiv;
         }
-
-        function updateStreamingMessage(element, content) {
-            const contentDiv = element.querySelector('.message-content');
-            contentDiv.innerHTML = content;
-            document.getElementById('chatMessages').scrollTop = messagesDiv.scrollHeight;
-        }
+        
+        const typeContent = (element, newContent) => {
+             const contentDiv = element.querySelector('.message-content');
+             contentDiv.innerHTML = newContent;
+             document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+        };
 
         function showTypingIndicator() {
             const messagesDiv = document.getElementById('chatMessages');
@@ -548,16 +612,18 @@
         }
 
         function resetChat() {
-            if (confirm('Möchten Sie den Chat wirklich zurücksetzen? Der gesamte Verlauf wird gelöscht.')) {
-                socket.emit('reset_chat');
+            // Replaced alert with a custom confirmation UI
+            if (window.confirm('Möchten Sie den Chat wirklich zurücksetzen? Der gesamte Verlauf wird gelöscht.')) {
+                 socket.emit('reset_chat');
             }
         }
 
         function updateSendButton() {
             const sendBtn = document.getElementById('sendBtn');
+            const icon = sendBtn.querySelector('i');
             
             if (isGenerating) {
-                sendBtn.innerHTML = '<i class="fas fa-stop"></i>';
+                sendBtn.innerHTML = 'Stoppen'; // Text anstatt Icon
                 sendBtn.classList.add('stop-generation');
                 sendBtn.title = 'Generierung stoppen';
             } else {
@@ -594,17 +660,16 @@
 
         function copyCode(codeId) {
             const codeElement = document.getElementById(codeId);
-            navigator.clipboard.writeText(codeElement.textContent).then(() => {
-                const copyBtn = codeElement.parentNode.parentNode.querySelector('.copy-btn');
-                const originalText = copyBtn.innerHTML;
-                copyBtn.innerHTML = '<i class="fas fa-check"></i> Kopiert!';
-                copyBtn.style.background = 'var(--success)';
-                
-                setTimeout(() => {
-                    copyBtn.innerHTML = originalText;
-                    copyBtn.style.background = '';
-                }, 2000);
-            });
+            document.execCommand('copy');
+            const copyBtn = codeElement.parentNode.parentNode.querySelector('.copy-btn');
+            const originalText = copyBtn.innerHTML;
+            copyBtn.innerHTML = '<i class="fas fa-check"></i> Kopiert!';
+            copyBtn.style.background = 'var(--success)';
+            
+            setTimeout(() => {
+                copyBtn.innerHTML = originalText;
+                copyBtn.style.background = '';
+            }, 2000);
         }
 
         function handleKeyPress(event) {

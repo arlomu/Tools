@@ -141,15 +141,26 @@ io.on('connection', (socket) => {
 
                         if (data.done) {
                             const endTime = Date.now();
+                            const stats = {
+                                tokens: tokenCount,
+                                duration: ((endTime - startTime) / 1000).toFixed(2)
+                            };
+                            
+                            // Letzte Nachricht mit allen Daten speichern
                             chatData.messages.push({
                                 role: 'assistant',
                                 content: aiResponse,
-                                stats: {
-                                    tokens: tokenCount,
-                                    duration: ((endTime - startTime) / 1000).toFixed(2)
-                                }
+                                stats: stats
                             });
                             saveChats(chatData);
+
+                            // Sende eine finale Nachricht mit den Stats an den Client
+                            socket.emit('message_completed', {
+                                responseId,
+                                content: await formatMessage(aiResponse),
+                                stats
+                            });
+                            
                             activeStreams.delete(socket.id);
                         }
                     } catch (e) {
@@ -168,6 +179,15 @@ io.on('connection', (socket) => {
                 socket.emit('error', 'Fehler bei der Kommunikation mit der AI');
             }
             activeStreams.delete(socket.id);
+        }
+    });
+
+    // Generierung stoppen
+    socket.on('stop_generation', () => {
+        if (activeStreams.has(socket.id)) {
+            activeStreams.get(socket.id).abort();
+            activeStreams.delete(socket.id);
+            socket.emit('streaming_stopped');
         }
     });
 
