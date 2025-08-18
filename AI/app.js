@@ -24,25 +24,37 @@ try {
 // Chat-Datenbank
 const CHAT_FILE = 'chat.json';
 
-// Funktion zum Laden der Chats
+// Verbesserte loadChats Funktion mit Fehlerbehandlung
 function loadChats() {
     try {
         if (fs.existsSync(CHAT_FILE)) {
             const data = fs.readFileSync(CHAT_FILE, 'utf8');
-            return JSON.parse(data);
+            const parsed = JSON.parse(data);
+            if (!Array.isArray(parsed.messages)) {
+                parsed.messages = [];
+            }
+            return {
+                messages: parsed.messages || [],
+                createdAt: parsed.createdAt || new Date().toISOString(),
+                updatedAt: parsed.updatedAt || new Date().toISOString()
+            };
         }
     } catch (e) {
         console.error('Fehler beim Laden der Chat-Daten:', e);
     }
-    return { messages: [], createdAt: new Date().toISOString() };
+    return { 
+        messages: [], 
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
 }
 
-// Funktion zum Speichern der Chats
+// Verbesserte saveChats Funktion
 function saveChats(chatData) {
     try {
         const dataToSave = {
-            messages: chatData.messages,
-            createdAt: chatData.createdAt,
+            messages: Array.isArray(chatData.messages) ? chatData.messages : [],
+            createdAt: chatData.createdAt || new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
         fs.writeFileSync(CHAT_FILE, JSON.stringify(dataToSave, null, 2));
@@ -54,13 +66,22 @@ function saveChats(chatData) {
 app.use(express.static('public'));
 app.use(express.json());
 
-// Funktion zum Abrufen des Website-Titels
+// URL-Titel Funktion
 async function getWebsiteTitle(url) {
     try {
-        const response = await axios.get(url, { timeout: 5000 });
+        // Handle URL: prefix
+        const cleanUrl = url.startsWith('URL:') ? url.substring(4).trim() : url;
+        const fullUrl = cleanUrl.startsWith('http') ? cleanUrl : `https://${cleanUrl}`;
+        
+        const response = await axios.get(fullUrl, { 
+            timeout: 5000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        });
         const dom = new JSDOM(response.data);
         const title = dom.window.document.querySelector('title');
-        return title ? title.textContent.trim() : url;
+        return title ? title.textContent.trim() : cleanUrl;
     } catch (error) {
         return url;
     }
@@ -72,7 +93,6 @@ const activeStreams = new Map();
 io.on('connection', (socket) => {
     console.log('Neuer Client verbunden:', socket.id);
 
-    // Aktiven Stream beim Trennen beenden
     socket.on('disconnect', () => {
         if (activeStreams.has(socket.id)) {
             activeStreams.get(socket.id).abort();
@@ -80,22 +100,23 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Chat laden
     socket.on('load_chat', () => {
         const chatData = loadChats();
         socket.emit('chat_loaded', chatData);
     });
 
-    // Nachricht senden
     socket.on('send_message', async (data) => {
         const { message } = data;
         let chatData = loadChats();
         
-        // Nutzernachricht hinzufügen
+        // Sicherstellen, dass messages Array existiert
+        if (!Array.isArray(chatData.messages)) {
+            chatData.messages = [];
+        }
+        
         chatData.messages.push({ role: 'user', content: message });
         saveChats(chatData);
         
-        // Vorherigen Stream beenden falls vorhanden
         if (activeStreams.has(socket.id)) {
             activeStreams.get(socket.id).abort();
             activeStreams.delete(socket.id);
@@ -110,7 +131,7 @@ io.on('connection', (socket) => {
             let aiResponse = '';
             let responseId = Date.now();
 
-            const response = await axios.post('http://localhost:11434/api/chat', {
+            const response = await axios.post(`${config.ollama.host || 'http://localhost:11434'}/api/chat`, {
                 model: config.ollama.model,
                 messages: [
                     { role: 'system', content: config.system_prompt },
@@ -119,7 +140,8 @@ io.on('connection', (socket) => {
                 stream: true
             }, {
                 responseType: 'stream',
-                signal: abortController.signal
+                signal: abortController.signal,
+                timeout: 120000 // 2 Minuten Timeout
             });
 
             response.data.on('data', async (chunk) => {
@@ -146,7 +168,6 @@ io.on('connection', (socket) => {
                                 duration: ((endTime - startTime) / 1000).toFixed(2)
                             };
                             
-                            // Letzte Nachricht mit allen Daten speichern
                             chatData.messages.push({
                                 role: 'assistant',
                                 content: aiResponse,
@@ -154,7 +175,6 @@ io.on('connection', (socket) => {
                             });
                             saveChats(chatData);
 
-                            // Sende eine finale Nachricht mit den Stats an den Client
                             socket.emit('message_completed', {
                                 responseId,
                                 content: await formatMessage(aiResponse),
@@ -164,13 +184,15 @@ io.on('connection', (socket) => {
                             activeStreams.delete(socket.id);
                         }
                     } catch (e) {
-                        // JSON Parse Fehler ignorieren
+                        console.error('Fehler beim Parsen der Stream-Daten:', e);
                     }
                 }
             });
 
             response.data.on('end', () => {
-                activeStreams.delete(socket.id);
+                if (activeStreams.has(socket.id)) {
+                    activeStreams.delete(socket.id);
+                }
             });
 
         } catch (error) {
@@ -178,11 +200,12 @@ io.on('connection', (socket) => {
                 console.error('Ollama Fehler:', error);
                 socket.emit('error', 'Fehler bei der Kommunikation mit der AI');
             }
-            activeStreams.delete(socket.id);
+            if (activeStreams.has(socket.id)) {
+                activeStreams.delete(socket.id);
+            }
         }
     });
 
-    // Generierung stoppen
     socket.on('stop_generation', () => {
         if (activeStreams.has(socket.id)) {
             activeStreams.get(socket.id).abort();
@@ -191,18 +214,20 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Chat zurücksetzen
     socket.on('reset_chat', () => {
         if (activeStreams.has(socket.id)) {
             activeStreams.get(socket.id).abort();
             activeStreams.delete(socket.id);
         }
-        const chatData = { messages: [], createdAt: new Date().toISOString() };
+        const chatData = { 
+            messages: [], 
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
         saveChats(chatData);
         socket.emit('chat_reset');
     });
 
-    // Nachrichtenformatierung
     async function formatMessage(message) {
         let formatted = message;
 
@@ -225,18 +250,26 @@ io.on('connection', (socket) => {
         // Inline-Code fett
         formatted = formatted.replace(/`([^`]+)`/g, '<strong class="inline-code">$1</strong>');
 
-        // URLs zu anklickbaren Links mit Website-Titel
-        const urlRegex = /(https?:\/\/[^\s]+)/g;
-        const urls = formatted.match(urlRegex);
+        // URLs zu anklickbaren Links (unterstützt URL: format)
+        const urlRegex = /(https?:\/\/[^\s]+)|(URL:\s*([^\s]+))/gi;
+        const urls = formatted.match(urlRegex) || [];
         
-        if (urls) {
-            for (const url of urls) {
-                const title = await getWebsiteTitle(url);
-                formatted = formatted.replace(url, 
-                    `<a href="${url}" target="_blank" rel="noopener noreferrer" class="url-link">
-                        <i class="fas fa-external-link-alt"></i> ${title}
-                    </a>`
-                );
+        for (const url of urls) {
+            try {
+                let cleanUrl = url.startsWith('URL:') ? url.substring(4).trim() : url;
+                if (!cleanUrl.startsWith('http')) {
+                    cleanUrl = `https://${cleanUrl}`;
+                }
+                
+                const title = await getWebsiteTitle(cleanUrl);
+                const displayUrl = url.startsWith('URL:') ? url.substring(4).trim() : url;
+                const linkHtml = `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="url-link">
+                    <i class="fas fa-external-link-alt"></i> ${title}
+                </a>`;
+                
+                formatted = formatted.replace(url, linkHtml);
+            } catch (e) {
+                console.error('Fehler beim Formatieren der URL:', url, e);
             }
         }
 
@@ -244,9 +277,17 @@ io.on('connection', (socket) => {
     }
 });
 
-// Server starten
 const PORT = config.server.port || 3000;
 server.listen(PORT, () => {
     console.log(`Tontoo AI Server läuft auf Port ${PORT}`);
     console.log(`Öffnen Sie http://localhost:${PORT} in Ihrem Browser`);
+});
+
+// Fehlerbehandlung
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
 });
