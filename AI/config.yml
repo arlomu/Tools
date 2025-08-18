@@ -6,7 +6,7 @@ server:
 # Ollama-Einstellungen
 ollama:
   host: "http://localhost:11434"
-  model: "gemma3:1b"
+  model: "gemma3:4b"
   
 # System-Prompt für die AI
 system_prompt: |
