@@ -102,6 +102,8 @@
             align-self: flex-end;
             justify-content: flex-end;
             flex-direction: row-reverse;
+            margin-left: auto;
+            margin-right: 0;
         }
 
         .message-content {
@@ -222,7 +224,7 @@
             bottom: 0;
             left: 0;
             right: 0;
-            padding: 14px;
+            padding: 14px 0;
             display: flex;
             justify-content: center;
             z-index: 100;
@@ -235,6 +237,7 @@
             flex-direction: column;
             align-items: center;
             gap: 10px;
+            padding: 0 14px;
         }
 
         .input-container {
@@ -429,13 +432,14 @@
         .url-link {
             color: var(--primary);
             text-decoration: none;
-            padding: 2px 6px;
+            padding: 1px 4px;
             background: rgba(37, 99, 235, 0.1);
-            border-radius: 4px;
+            border-radius: 3px;
             border: 1px solid rgba(37, 99, 235, 0.3);
-            display: inline-block;
-            margin: 2px;
+            display: inline;
+            margin: 0 1px;
             transition: all 0.2s ease;
+            font-size: 14px;
         }
 
         .url-link:hover {
@@ -445,7 +449,8 @@
 
         .url-link::before {
             content: "🔗 ";
-            margin-right: 4px;
+            margin-right: 2px;
+            font-size: 12px;
         }
 
         /* Space for fixed input */
@@ -561,8 +566,15 @@
             if (currentStreamingElement) {
                  const contentDiv = currentStreamingElement.querySelector('.message-content');
                  contentDiv.innerHTML = formatMessage(data.content) + statsHtml;
+                 // Prism highlighting für Code-Blöcke
+                 setTimeout(() => {
+                     Prism.highlightAllUnder(currentStreamingElement);
+                 }, 50);
             } else {
-                addMessage('ai', formatMessage(data.content) + statsHtml);
+                const aiMessage = addMessage('ai', formatMessage(data.content) + statsHtml);
+                setTimeout(() => {
+                    Prism.highlightAllUnder(aiMessage);
+                }, 50);
             }
             
             setTimeout(() => {
@@ -594,6 +606,10 @@
             clearMessages();
             addWelcomeMessage();
             scrollToBottom();
+            // Seite neu laden nach Reset
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
         });
         
         socket.on('streaming_stopped', () => {
@@ -601,7 +617,11 @@
             updateSendButton();
             removeTypingIndicator();
             if (currentStreamingElement) {
-                currentStreamingElement.querySelector('.message-content').classList.remove('typing-content');
+                const contentDiv = currentStreamingElement.querySelector('.message-content');
+                contentDiv.classList.remove('typing-content');
+                // Formatiere den Inhalt nach dem Stoppen
+                contentDiv.innerHTML = formatMessage(contentDiv.innerHTML);
+                Prism.highlightAllUnder(currentStreamingElement);
             }
             currentResponseId = null;
             currentStreamingElement = null;
@@ -757,6 +777,9 @@
                     <pre><code id="${codeId}" class="language-${language}">${cleanCode}</code></pre>
                 </div>`;
             });
+
+            // **Text** zu Bold formatieren
+            formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 
             // Inline-Code
             formatted = formatted.replace(/`([^`]+)`/g, '<strong class="inline-code">$1</strong>');
