@@ -40,12 +40,11 @@
             display: flex;
             flex: 1;
             height: 100vh;
-            max-width: 100%;
+            max-width: 1200px;
+            width: 100%;
             margin: 0 auto;
             background: var(--background);
             flex-direction: column;
-            max-width: 1200px;
-            width: 100%;
         }
 
         /* Main Chat */
@@ -56,6 +55,7 @@
             background: var(--background);
             position: relative;
             width: 100%;
+            min-height: 0; /* Wichtig für Flexbox */
         }
 
         .chat-header {
@@ -65,6 +65,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-shrink: 0;
         }
 
         .chat-title {
@@ -79,6 +80,7 @@
             scroll-behavior: smooth;
             display: flex;
             flex-direction: column;
+            min-height: 0; /* Wichtig für Flexbox */
         }
 
         .message {
@@ -92,18 +94,18 @@
 
         /* User links, KI rechts */
         .message.user {
-            margin-right: auto;
+            align-self: flex-start;
             justify-content: flex-start;
         }
 
         .message.ai {
-            margin-left: auto;
+            align-self: flex-end;
             justify-content: flex-end;
             flex-direction: row-reverse;
         }
 
         .message-content {
-            max-width: min(80%, 800px);
+            max-width: min(80%, 600px);
             padding: 14px 18px;
             border-radius: 12px;
             font-size: 15px;
@@ -118,13 +120,13 @@
         .message.user .message-content {
             background: var(--primary);
             color: white;
-            border-bottom-right-radius: 4px;
+            border-bottom-left-radius: 4px;
         }
 
         .message.ai .message-content {
             background: var(--surface);
             color: var(--text);
-            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
@@ -212,14 +214,18 @@
             line-height: 1.5;
         }
 
-        /* Input Area */
+        /* Input Area - Fixed position */
         .input-area {
             background: var(--surface);
             border-top: 1px solid rgba(255, 255, 255, 0.05);
-            position: relative;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
             padding: 14px;
             display: flex;
             justify-content: center;
+            z-index: 100;
         }
         
         .input-wrapper {
@@ -235,7 +241,6 @@
             display: flex;
             align-items: center;
             background: var(--surface-light);
-            border: none; /* Kein Rand mehr */
             border-radius: 12px;
             padding: 10px 14px;
             transition: all 0.2s ease;
@@ -259,7 +264,7 @@
             color: var(--text-secondary);
         }
 
-        #sendBtn, .reset-btn {
+        #sendBtn {
             background: var(--primary);
             color: white;
             border: none;
@@ -278,12 +283,19 @@
         .reset-btn {
             background: var(--error);
             color: white;
-            padding: 0;
-            width: auto;
+            border: none;
+            padding: 8px 14px;
             border-radius: 8px;
+            cursor: pointer;
             font-size: 14px;
             display: flex;
-            padding: 8px 14px;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .reset-btn:hover {
+            background: #dc2626;
         }
 
         #sendBtn:hover:not(:disabled) {
@@ -302,16 +314,6 @@
             padding: 0 16px;
             transition: none;
         }
-        
-        #sendBtn.stop-generation i {
-            display: block;
-            margin-right: 5px;
-        }
-        
-        #sendBtn.stop-generation::after {
-            content: 'Stoppen';
-            display: inline;
-        }
 
         #sendBtn.stop-generation:hover {
             background: #dc2626;
@@ -324,7 +326,7 @@
             padding: 12px 16px;
             background: var(--surface);
             border-radius: 12px;
-            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
             max-width: 80px;
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
@@ -357,11 +359,7 @@
             to { opacity: 1; }
         }
 
-        /* Scrollbar Fix */
-        .chat-messages {
-            overflow-y: auto !important;
-        }
-
+        /* Scrollbar */
         .chat-messages::-webkit-scrollbar {
             width: 8px;
         }
@@ -426,6 +424,34 @@
             background: var(--surface-light);
             color: var(--text);
         }
+
+        /* URL Link Styling */
+        .url-link {
+            color: var(--primary);
+            text-decoration: none;
+            padding: 2px 6px;
+            background: rgba(37, 99, 235, 0.1);
+            border-radius: 4px;
+            border: 1px solid rgba(37, 99, 235, 0.3);
+            display: inline-block;
+            margin: 2px;
+            transition: all 0.2s ease;
+        }
+
+        .url-link:hover {
+            background: rgba(37, 99, 235, 0.2);
+            border-color: rgba(37, 99, 235, 0.5);
+        }
+
+        .url-link::before {
+            content: "🔗 ";
+            margin-right: 4px;
+        }
+
+        /* Space for fixed input */
+        .main-chat {
+            padding-bottom: 120px;
+        }
     </style>
 </head>
 <body>
@@ -446,7 +472,7 @@
         <div class="main-chat">
             <div class="chat-header">
                 <div class="chat-title" id="chatTitle">Tontoo AI</div>
-                <button class="reset-btn" id="resetChatBtn">
+                <button class="reset-btn" id="resetChatBtn" style="display: none;">
                     <i class="fas fa-trash"></i> Chat löschen
                 </button>
             </div>
@@ -470,19 +496,21 @@
                     </div>
                 </div>
             </div>
-            <div class="input-area">
-                <div class="input-wrapper">
-                    <div class="input-container">
-                        <textarea
-                            id="messageInput"
-                            placeholder="Schreiben Sie Ihre Nachricht..."
-                            rows="1"
-                            onkeypress="handleKeyPress(event)"
-                        ></textarea>
-                        <button id="sendBtn" onclick="sendMessage()">
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
-                    </div>
+        </div>
+        
+        <!-- Fixed Input Area -->
+        <div class="input-area">
+            <div class="input-wrapper">
+                <div class="input-container">
+                    <textarea
+                        id="messageInput"
+                        placeholder="Schreiben Sie Ihre Nachricht..."
+                        rows="1"
+                        onkeypress="handleKeyPress(event)"
+                    ></textarea>
+                    <button id="sendBtn" onclick="sendMessage()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -532,9 +560,9 @@
             
             if (currentStreamingElement) {
                  const contentDiv = currentStreamingElement.querySelector('.message-content');
-                 contentDiv.innerHTML = data.content + statsHtml;
+                 contentDiv.innerHTML = formatMessage(data.content) + statsHtml;
             } else {
-                addMessage('ai', data.content + statsHtml);
+                addMessage('ai', formatMessage(data.content) + statsHtml);
             }
             
             setTimeout(() => {
@@ -557,7 +585,7 @@
                 updateSendButton();
             }
             
-            typeContent(currentStreamingElement, data.content);
+            typeContent(currentStreamingElement, formatMessage(data.content));
             scrollToBottom();
         });
 
@@ -700,7 +728,7 @@
             const sendBtn = document.getElementById('sendBtn');
             
             if (isGenerating) {
-                sendBtn.innerHTML = '<i class="fas fa-stop"></i> Stoppen';
+                sendBtn.innerHTML = '<i class="fas fa-stop"></i>';
                 sendBtn.classList.add('stop-generation');
                 sendBtn.title = 'Generierung stoppen';
             } else {
@@ -716,6 +744,7 @@
             // Code-Blöcke
             formatted = formatted.replace(/```(\w+)?\n?([\s\S]*?)```/g, (match, lang, code) => {
                 const language = lang || 'text';
+                const cleanCode = code.trim(); // Leerzeichen entfernen
                 const codeId = `code_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
                 
                 return `<div class="code-block" data-lang="${language}">
@@ -725,17 +754,18 @@
                             <i class="fas fa-copy"></i> Kopieren
                         </button>
                     </div>
-                    <pre><code id="${codeId}" class="language-${language}">${code.trim()}</code></pre>
+                    <pre><code id="${codeId}" class="language-${language}">${cleanCode}</code></pre>
                 </div>`;
             });
 
             // Inline-Code
             formatted = formatted.replace(/`([^`]+)`/g, '<strong class="inline-code">$1</strong>');
             
-            // URL: Format
+            // Custom URL Format mit schönem Styling
             formatted = formatted.replace(/URL:\s*([^\s]+)/gi, (match, url) => {
+                const displayUrl = url.replace(/^https?:\/\//, ''); // Protokoll für Anzeige entfernen
                 const fullUrl = url.startsWith('http') ? url : `https://${url}`;
-                return `<a href="${fullUrl}" target="_blank" class="url-link">${url}</a>`;
+                return `<a href="${fullUrl}" target="_blank" class="url-link">${displayUrl}</a>`;
             });
             
             return formatted;
