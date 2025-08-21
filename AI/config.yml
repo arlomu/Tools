@@ -6,7 +6,9 @@ server:
 # Ollama-Einstellungen
 ollama:
   host: "http://localhost:11434"
-  model: "qwen2.5-coder:0.5b"
+#  model: "qwen2.5-coder:0.5b"
+  model: "gemma3:1b"
+#  model: "starcoder2:3b"
   
 # System-Prompt für die AI
 system_prompt: |
