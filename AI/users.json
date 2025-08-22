@@ -1,1 +1,10 @@
-{}
+{
+  "admin": {
+    "password": "$2a$10$X8z5z9z7z6z5z4z3z2z1z0z9z8z7z6z5z4z3z2z1z0z9z8z7z6z5z4z3z2z1",
+    "max_tokens": 10000,
+    "tokens_used_today": 0,
+    "isAdmin": true,
+    "personal_prompt": "Ich bin der Administrator dieses Systems.",
+    "chats": {}
+  }
+}
