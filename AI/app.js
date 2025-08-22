@@ -6,6 +6,8 @@ const fs = require('fs');
 const yaml = require('js-yaml');
 const path = require('path');
 const { JSDOM } = require('jsdom');
+const session = require('express-session');
+const bcrypt = require('bcryptjs');
 
 const app = express();
 const server = http.createServer(app);
@@ -21,6 +23,14 @@ try {
     process.exit(1);
 }
 
+// Session Middleware
+app.use(session({
+    secret: config.session_secret || 'default_secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 24 Stunden
+}));
+
 // Lade Modelle aus model.json
 let models = {};
 try {
@@ -31,50 +41,144 @@ try {
     process.exit(1);
 }
 
-// Chat-Datenbank
-const CHAT_FILE = 'chat.json';
+// Lade Benutzerdaten
+const USER_FILE = 'users.json';
 
-// Verbesserte loadChats Funktion mit Fehlerbehandlung
-function loadChats() {
+function loadUsers() {
     try {
-        if (fs.existsSync(CHAT_FILE)) {
-            const data = fs.readFileSync(CHAT_FILE, 'utf8');
-            const parsed = JSON.parse(data);
-            if (!Array.isArray(parsed.messages)) {
-                parsed.messages = [];
-            }
-            return {
-                messages: parsed.messages || [],
-                createdAt: parsed.createdAt || new Date().toISOString(),
-                updatedAt: parsed.updatedAt || new Date().toISOString()
-            };
+        if (fs.existsSync(USER_FILE)) {
+            const data = fs.readFileSync(USER_FILE, 'utf8');
+            return JSON.parse(data);
         }
     } catch (e) {
-        console.error('Fehler beim Laden der Chat-Daten:', e);
+        console.error('Fehler beim Laden der Benutzerdaten:', e);
     }
-    return { 
-        messages: [], 
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-    };
+    return {};
 }
 
-// Verbesserte saveChats Funktion
-function saveChats(chatData) {
+function saveUsers(users) {
     try {
-        const dataToSave = {
-            messages: Array.isArray(chatData.messages) ? chatData.messages : [],
-            createdAt: chatData.createdAt || new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
-        fs.writeFileSync(CHAT_FILE, JSON.stringify(dataToSave, null, 2));
+        fs.writeFileSync(USER_FILE, JSON.stringify(users, null, 2));
     } catch (e) {
-        console.error('Fehler beim Speichern der Chat-Daten:', e);
+        console.error('Fehler beim Speichern der Benutzerdaten:', e);
     }
 }
 
+// Token Reset Scheduler
+function scheduleTokenReset() {
+    const cron = require('node-cron');
+    cron.schedule(config.token_reset_time || '0 0 * * *', () => {
+        const users = loadUsers();
+        Object.keys(users).forEach(username => {
+            users[username].tokens_used_today = 0;
+        });
+        saveUsers(users);
+        console.log('Token limits wurden zurückgesetzt');
+    });
+}
+scheduleTokenReset();
+
+// Middleware
 app.use(express.static('public'));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Auth Middleware
+function requireAuth(req, res, next) {
+    if (req.session.user) {
+        next();
+    } else {
+        res.redirect('/login.html');
+    }
+}
+
+function requireAdmin(req, res, next) {
+    if (req.session.user && req.session.user.isAdmin) {
+        next();
+    } else {
+        res.status(403).send('Zugriff verweigert');
+    }
+}
+
+// Routes
+app.get('/', (req, res) => {
+    if (req.session.user) {
+        res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    } else {
+        res.redirect('/login.html');
+    }
+});
+
+app.get('/admin.html', requireAdmin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+app.post('/login', (req, res) => {
+    const { username, password } = req.body;
+    const users = loadUsers();
+    
+    if (users[username] && bcrypt.compareSync(password, users[username].password)) {
+        req.session.user = {
+            username,
+            isAdmin: users[username].isAdmin || false,
+            max_tokens: users[username].max_tokens,
+            tokens_used_today: users[username].tokens_used_today || 0
+        };
+        res.redirect('/');
+    } else {
+        res.status(401).send('Ungültige Anmeldedaten');
+    }
+});
+
+app.post('/admin/create-user', requireAdmin, (req, res) => {
+    const { username, password, max_tokens, isAdmin } = req.body;
+    const users = loadUsers();
+    
+    if (users[username]) {
+        return res.status(400).send('Benutzer existiert bereits');
+    }
+    
+    users[username] = {
+        password: bcrypt.hashSync(password, 10),
+        max_tokens: parseInt(max_tokens),
+        tokens_used_today: 0,
+        isAdmin: isAdmin === 'on',
+        personal_prompt: '',
+        chats: {}
+    };
+    
+    saveUsers(users);
+    res.redirect('/admin.html');
+});
+
+app.post('/logout', (req, res) => {
+    req.session.destroy();
+    res.redirect('/login.html');
+});
+
+app.get('/api/userinfo', requireAuth, (req, res) => {
+    const users = loadUsers();
+    const user = users[req.session.user.username];
+    res.json({
+        username: req.session.user.username,
+        tokens_remaining: user.max_tokens - (user.tokens_used_today || 0),
+        max_tokens: user.max_tokens,
+        personal_prompt: user.personal_prompt || ''
+    });
+});
+
+app.post('/api/update-personal-prompt', requireAuth, (req, res) => {
+    const { personal_prompt } = req.body;
+    const users = loadUsers();
+    
+    if (users[req.session.user.username]) {
+        users[req.session.user.username].personal_prompt = personal_prompt;
+        saveUsers(users);
+        res.json({ success: true });
+    } else {
+        res.status(400).json({ error: 'Benutzer nicht gefunden' });
+    }
+});
 
 // URL-Titel Funktion
 async function getWebsiteTitle(url) {
@@ -103,8 +207,12 @@ const activeStreams = new Map();
 io.on('connection', (socket) => {
     console.log('Neuer Client verbunden:', socket.id);
 
-    // Sende Modelle an Client
-    socket.emit('models_loaded', models);
+    // Authentifizierung für WebSocket
+    socket.on('authenticate', (sessionId) => {
+        // Hier müsste die Session-Überprüfung implementiert werden
+        // Vereinfachte Implementierung für dieses Beispiel
+        socket.emit('models_loaded', models);
+    });
 
     socket.on('disconnect', () => {
         if (activeStreams.has(socket.id)) {
@@ -113,14 +221,59 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('load_chat', () => {
-        const chatData = loadChats();
-        socket.emit('chat_loaded', chatData);
+    socket.on('load_chat', (chatId = 'default') => {
+        const users = loadUsers();
+        const username = socket.request.session?.user?.username;
+        
+        if (!username || !users[username]) {
+            socket.emit('error', 'Nicht authentifiziert');
+            return;
+        }
+        
+        if (!users[username].chats[chatId]) {
+            users[username].chats[chatId] = {
+                messages: [],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            saveUsers(users);
+        }
+        
+        socket.emit('chat_loaded', {
+            chatId,
+            chatData: users[username].chats[chatId],
+            chatList: Object.keys(users[username].chats).map(id => ({
+                id,
+                name: users[username].chats[id].name || `Chat ${id}`,
+                updatedAt: users[username].chats[id].updatedAt
+            }))
+        });
     });
 
     socket.on('send_message', async (data) => {
-        const { message, selectedModel } = data;
-        let chatData = loadChats();
+        const { message, selectedModel, chatId = 'default' } = data;
+        const users = loadUsers();
+        const username = socket.request.session?.user?.username;
+        
+        if (!username || !users[username]) {
+            socket.emit('error', 'Nicht authentifiziert');
+            return;
+        }
+        
+        // Token Limit prüfen
+        const user = users[username];
+        const remainingTokens = user.max_tokens - user.tokens_used_today;
+        
+        if (remainingTokens <= 0) {
+            socket.emit('token_limit_exceeded');
+            return;
+        }
+        
+        let chatData = user.chats[chatId] || {
+            messages: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
         
         // Sicherstellen, dass messages Array existiert
         if (!Array.isArray(chatData.messages)) {
@@ -128,7 +281,15 @@ io.on('connection', (socket) => {
         }
         
         chatData.messages.push({ role: 'user', content: message });
-        saveChats(chatData);
+        chatData.updatedAt = new Date().toISOString();
+        
+        // Setze Chat-Namen basierend auf der ersten Nachricht, falls nicht vorhanden
+        if (!chatData.name && chatData.messages.length === 1) {
+            chatData.name = message.substring(0, 20);
+        }
+        
+        users[username].chats[chatId] = chatData;
+        saveUsers(users);
         
         if (activeStreams.has(socket.id)) {
             activeStreams.get(socket.id).abort();
@@ -144,10 +305,14 @@ io.on('connection', (socket) => {
             let aiResponse = '';
             let responseId = Date.now();
 
+            // Personal Prompt hinzufügen
+            const personalPrompt = user.personal_prompt || '';
+            const systemPrompt = config.system_prompt + (personalPrompt ? `\n${personalPrompt}` : '');
+
             const response = await axios.post(`${config.ollama.host || 'http://localhost:11434'}/api/chat`, {
                 model: selectedModel,
                 messages: [
-                    { role: 'system', content: config.system_prompt },
+                    { role: 'system', content: systemPrompt },
                     ...chatData.messages
                 ],
                 stream: true
@@ -181,12 +346,16 @@ io.on('connection', (socket) => {
                                 duration: ((endTime - startTime) / 1000).toFixed(2)
                             };
                             
+                            // Token-Verbrauch aktualisieren
+                            users[username].tokens_used_today += tokenCount;
                             chatData.messages.push({
                                 role: 'assistant',
                                 content: aiResponse,
                                 stats: stats
                             });
-                            saveChats(chatData);
+                            chatData.updatedAt = new Date().toISOString();
+                            users[username].chats[chatId] = chatData;
+                            saveUsers(users);
 
                             socket.emit('message_completed', {
                                 responseId,
@@ -227,18 +396,51 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('reset_chat', () => {
+    socket.on('reset_chat', (chatId = 'default') => {
         if (activeStreams.has(socket.id)) {
             activeStreams.get(socket.id).abort();
             activeStreams.delete(socket.id);
         }
-        const chatData = { 
-            messages: [], 
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
-        saveChats(chatData);
-        socket.emit('chat_reset');
+        
+        const users = loadUsers();
+        const username = socket.request.session?.user?.username;
+        
+        if (username && users[username]) {
+            users[username].chats[chatId] = { 
+                messages: [], 
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            saveUsers(users);
+            socket.emit('chat_reset');
+        }
+    });
+
+    socket.on('delete_chat', (chatId) => {
+        const users = loadUsers();
+        const username = socket.request.session?.user?.username;
+        
+        if (username && users[username] && users[username].chats[chatId]) {
+            delete users[username].chats[chatId];
+            saveUsers(users);
+            socket.emit('chat_deleted', chatId);
+        }
+    });
+
+    socket.on('create_chat', () => {
+        const users = loadUsers();
+        const username = socket.request.session?.user?.username;
+        
+        if (username && users[username]) {
+            const chatId = `chat_${Date.now()}`;
+            users[username].chats[chatId] = {
+                messages: [],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+            saveUsers(users);
+            socket.emit('chat_created', chatId);
+        }
     });
 
     async function formatMessage(message) {
