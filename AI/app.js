@@ -21,6 +21,16 @@ try {
     process.exit(1);
 }
 
+// Lade Modelle aus model.json
+let models = {};
+try {
+    const modelsFile = fs.readFileSync('model.json', 'utf8');
+    models = JSON.parse(modelsFile);
+} catch (e) {
+    console.error('Fehler beim Laden der model.json:', e);
+    process.exit(1);
+}
+
 // Chat-Datenbank
 const CHAT_FILE = 'chat.json';
 
@@ -93,6 +103,9 @@ const activeStreams = new Map();
 io.on('connection', (socket) => {
     console.log('Neuer Client verbunden:', socket.id);
 
+    // Sende Modelle an Client
+    socket.emit('models_loaded', models);
+
     socket.on('disconnect', () => {
         if (activeStreams.has(socket.id)) {
             activeStreams.get(socket.id).abort();
@@ -106,7 +119,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('send_message', async (data) => {
-        const { message } = data;
+        const { message, selectedModel } = data;
         let chatData = loadChats();
         
         // Sicherstellen, dass messages Array existiert
@@ -132,7 +145,7 @@ io.on('connection', (socket) => {
             let responseId = Date.now();
 
             const response = await axios.post(`${config.ollama.host || 'http://localhost:11434'}/api/chat`, {
-                model: config.ollama.model,
+                model: selectedModel,
                 messages: [
                     { role: 'system', content: config.system_prompt },
                     ...chatData.messages

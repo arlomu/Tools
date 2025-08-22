@@ -1,9 +1,0 @@
-server:
-  port: 80
-
-ollama:
-  host: "http://localhost:11434"
-  models: "model.json"
-
-system_prompt:
-  Du bist eine KI immerhöfflich sein
