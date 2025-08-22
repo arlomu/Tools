@@ -1,5 +1,8 @@
 {
-  "qwen2.5-coder:0.5b": "Qwen Coder",
-  "deepseek-r1:1.5b": "DeepSeek R1",
-  "llama3.2:3b": "Lama3"
+  "llama3.2:1b": "LLama (Schnell)",
+  "llama3.2:3b": "LLama (Mittel)",
+  "qwen2.5-coder:1.5b": "Coder (Schnell)",
+  "qwen2.5-coder:3b": "Coder (Mittel)",
+  "qwen2.5-coder:7b": "Coder (Langsam)",
+  "deepseek-r1:1.5b": "Denken (Mittel)"
 }

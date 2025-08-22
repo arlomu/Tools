@@ -428,6 +428,29 @@
             transition: none;
         }
 
+        /* Model Selector */
+        .model-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-right: auto;
+        }
+
+        #modelSelect {
+            background: var(--surface-light);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 12px;
+            min-width: 150px;
+        }
+
+        .model-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
         /* Loading Animation */
         .typing-indicator {
             display: flex;
@@ -609,6 +632,13 @@
             .main-chat.with-preview {
                 margin-right: 0;
             }
+
+            .model-selector {
+                order: -1;
+                margin-bottom: 8px;
+                width: 100%;
+                justify-content: center;
+            }
         }
     </style>
 </head>
@@ -654,7 +684,7 @@
                             <i class="fas fa-robot"></i>
                         </div>
                         <div class="message-content">
-                            <h3>👋 Willkommen bei Tontoo AI!</h3>
+                            <h3>Tontoo AI!</h3>
                             <p>Ich bin Ihr intelligenter Chat-Assistent. Ich kann Ihnen bei verschiedenen Aufgaben helfen:</p>
                             <ul>
                                 <li>🔧 Code schreiben und debuggen</li>
@@ -672,6 +702,10 @@
         <!-- Fixed Input Area -->
         <div class="input-area">
             <div class="input-wrapper">
+                <div class="model-selector">
+                    <span class="model-label"></span>
+                    <select id="modelSelect"></select>
+                </div>
                 <div class="input-container">
                     <textarea
                         id="messageInput"
@@ -702,6 +736,18 @@
         let lastUserMessage = '';
 
         // Socket Events
+        socket.on('models_loaded', (models) => {
+            const modelSelect = document.getElementById('modelSelect');
+            modelSelect.innerHTML = '';
+            
+            for (const [modelId, modelName] of Object.entries(models)) {
+                const option = document.createElement('option');
+                option.value = modelId;
+                option.textContent = modelName;
+                modelSelect.appendChild(option);
+            }
+        });
+
         socket.on('chat_loaded', (data) => {
             updateUIState(data.messages.length > 0);
             
@@ -822,6 +868,8 @@
         function sendMessage() {
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
+            const modelSelect = document.getElementById('modelSelect');
+            const selectedModel = modelSelect.value;
             
             if (isGenerating) {
                 socket.emit('stop_generation');
@@ -834,7 +882,7 @@
                 showTypingIndicator();
                 isGenerating = true;
                 updateSendButton();
-                socket.emit('send_message', { message });
+                socket.emit('send_message', { message, selectedModel });
                 input.value = '';
                 adjustTextareaHeight(input);
                 updateUIState(true);
@@ -1081,7 +1129,9 @@
                 showTypingIndicator();
                 isGenerating = true;
                 updateSendButton();
-                socket.emit('send_message', { message: lastUserMessage });
+                const modelSelect = document.getElementById('modelSelect');
+                const selectedModel = modelSelect.value;
+                socket.emit('send_message', { message: lastUserMessage, selectedModel });
                 scrollToBottom();
             }
         }
