@@ -46,8 +46,205 @@
             width: 100%;
             margin: 0 auto;
             background: var(--background);
-            flex-direction: column;
             position: relative;
+        }
+
+        /* Chat Sidebar */
+        .chat-sidebar {
+            width: 280px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+            z-index: 10;
+        }
+
+        .sidebar-header {
+            padding: 16px;
+            background: var(--surface-light);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .new-chat-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .chat-item {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-item:hover {
+            background: var(--surface-light);
+        }
+
+        .chat-item.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .chat-name {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 14px;
+        }
+
+        .chat-actions {
+            display: flex;
+            gap: 6px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .chat-item:hover .chat-actions {
+            opacity: 1;
+        }
+
+        .chat-action-btn {
+            background: transparent;
+            color: var(--text-secondary);
+            border: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .chat-action-btn:hover {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        /* Account Menu */
+        .account-menu {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .account-toggle {
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .account-toggle:hover {
+            transform: scale(1.05);
+            background: var(--primary-hover);
+        }
+
+        .account-dropdown {
+            position: absolute;
+            bottom: 60px;
+            right: 0;
+            width: 250px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .account-dropdown.open {
+            display: flex;
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .username {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .token-info {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .account-btn {
+            background: var(--surface-light);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            font-size: 14px;
+        }
+
+        .account-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .logout-btn {
+            background: var(--error);
+            color: white;
+            border-color: var(--error);
+        }
+
+        .logout-btn:hover {
+            background: #dc2626;
+            border-color: #dc2626;
         }
 
         /* HTML Preview Sidebar */
@@ -528,7 +725,7 @@
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 24px;
-            max-width: 400px;
+            max-width: 500px;
             width: 90%;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
         }
@@ -574,6 +771,98 @@
 
         .modal-cancel:hover {
             background: var(--border);
+        }
+
+        /* Personal Prompt Modal */
+        .prompt-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .prompt-modal-content {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .prompt-textarea {
+            background: var(--surface-light);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .prompt-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .prompt-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .prompt-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+
+        .prompt-save {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .prompt-cancel {
+            background: var(--surface-light);
+            color: var(--text);
+        }
+
+        .prompt-cancel:hover {
+            background: var(--border);
+        }
+
+        /* Token Limit Warning */
+        .token-warning {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--error);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            gap: 8px;
         }
 
         /* Inline Formatting */
@@ -624,6 +913,18 @@
 
         /* Responsive */
         @media (max-width: 768px) {
+            .chat-sidebar {
+                position: fixed;
+                left: -280px;
+                top: 0;
+                height: 100%;
+                z-index: 100;
+            }
+            
+            .chat-sidebar.open {
+                transform: translateX(280px);
+            }
+            
             .html-preview-sidebar {
                 width: 100%;
                 right: -100%;
@@ -639,10 +940,29 @@
                 width: 100%;
                 justify-content: center;
             }
+            
+            .account-dropdown {
+                width: 90%;
+                right: 5%;
+                left: 5%;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Chat Sidebar -->
+    <div class="chat-sidebar" id="chatSidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">Chats</div>
+            <button class="new-chat-btn" id="newChatBtn">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+        <div class="chat-list" id="chatList">
+            <!-- Chats werden dynamisch geladen -->
+        </div>
+    </div>
+
     <!-- HTML Preview Sidebar -->
     <div class="html-preview-sidebar" id="htmlPreviewSidebar">
         <div class="preview-header">
@@ -654,6 +974,31 @@
         <div class="preview-content">
             <iframe class="preview-iframe" id="previewIframe"></iframe>
         </div>
+    </div>
+
+    <!-- Account Menu -->
+    <div class="account-menu">
+        <button class="account-toggle" id="accountToggle">
+            <i class="fas fa-user"></i>
+        </button>
+        <div class="account-dropdown" id="accountDropdown">
+            <div class="user-info">
+                <div class="username" id="usernameDisplay">Benutzer</div>
+                <div class="token-info" id="tokenDisplay">Tokens: 0/0</div>
+            </div>
+            <button class="account-btn" id="personalPromptBtn">
+                <i class="fas fa-cog"></i> Personal Prompt
+            </button>
+            <button class="account-btn logout-btn" id="logoutBtn">
+                <i class="fas fa-sign-out-alt"></i> Abmelden
+            </button>
+        </div>
+    </div>
+
+    <!-- Token Warning -->
+    <div class="token-warning" id="tokenWarning">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span>Sie haben Ihr Token-Limit für heute aufgebraucht. Das Limit wird um 0 Uhr zurückgesetzt.</span>
     </div>
 
     <!-- Modal -->
@@ -668,10 +1013,26 @@
         </div>
     </div>
 
+    <!-- Personal Prompt Modal -->
+    <div class="prompt-modal" id="personalPromptModal">
+        <div class="prompt-modal-content">
+            <h3>Personal Prompt</h3>
+            <p>Definieren Sie hier einen persönlichen Prompt, der jedem System-Prompt hinzugefügt wird.</p>
+            <textarea class="prompt-textarea" id="personalPromptInput" placeholder="Beispiel: Mein Name ist Max. Ich bin Softwareentwickler und mag Python..."></textarea>
+            <div class="prompt-buttons">
+                <button class="prompt-btn prompt-cancel" onclick="closePersonalPromptModal()">Abbrechen</button>
+                <button class="prompt-btn prompt-save" onclick="savePersonalPrompt()">Speichern</button>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <!-- Main Chat -->
         <div class="main-chat" id="mainChat">
             <div class="chat-header">
+                <button class="reset-btn" id="toggleSidebarBtn">
+                    <i class="fas fa-bars"></i> Chats
+                </button>
                 <div class="chat-title" id="chatTitle">Tontoo AI</div>
                 <button class="reset-btn" id="resetChatBtn" style="display: none;">
                     <i class="fas fa-trash"></i> Chat löschen
@@ -734,6 +1095,8 @@
         let currentResponseId = null;
         let currentStreamingElement = null;
         let lastUserMessage = '';
+        let currentChatId = 'default';
+        let userInfo = null;
 
         // Socket Events
         socket.on('models_loaded', (models) => {
@@ -749,11 +1112,15 @@
         });
 
         socket.on('chat_loaded', (data) => {
-            updateUIState(data.messages.length > 0);
+            currentChatId = data.chatId;
+            updateUIState(data.chatData.messages.length > 0);
             
-            if (data.messages.length > 0) {
+            // Chat-Liste aktualisieren
+            updateChatList(data.chatList);
+            
+            if (data.chatData.messages.length > 0) {
                 clearMessages();
-                data.messages.forEach(msg => {
+                data.chatData.messages.forEach(msg => {
                     if (msg.role === 'user') {
                         addMessage('user', msg.content);
                     } else {
@@ -813,6 +1180,12 @@
             currentStreamingElement = null;
             isGenerating = false;
             updateSendButton();
+            
+            // Token-Anzeige aktualisieren
+            if (userInfo) {
+                userInfo.tokens_remaining -= data.stats.tokens;
+                updateTokenDisplay();
+            }
         });
 
         socket.on('message_streaming', (data) => {
@@ -858,6 +1231,37 @@
             addMessage('ai', `<div style="color: var(--error);"><i class="fas fa-exclamation-triangle"></i> ${error}</div>`);
             scrollToBottom();
         });
+        
+        socket.on('token_limit_exceeded', () => {
+            isGenerating = false;
+            updateSendButton();
+            removeTypingIndicator();
+            currentResponseId = null;
+            currentStreamingElement = null;
+            
+            // Token-Warnung anzeigen
+            const tokenWarning = document.getElementById('tokenWarning');
+            tokenWarning.style.display = 'flex';
+            
+            setTimeout(() => {
+                tokenWarning.style.display = 'none';
+            }, 5000);
+        });
+        
+        socket.on('chat_created', (chatId) => {
+            // Neuen Chat laden
+            socket.emit('load_chat', chatId);
+        });
+        
+        socket.on('chat_deleted', (chatId) => {
+            if (currentChatId === chatId) {
+                // Gelöschten Chat war der aktuelle, zum Default wechseln
+                socket.emit('load_chat', 'default');
+            } else {
+                // Nur Chat-Liste aktualisieren
+                socket.emit('load_chat', currentChatId);
+            }
+        });
 
         // UI Functions
         function updateUIState(hasMessages) {
@@ -882,7 +1286,7 @@
                 showTypingIndicator();
                 isGenerating = true;
                 updateSendButton();
-                socket.emit('send_message', { message, selectedModel });
+                socket.emit('send_message', { message, selectedModel, chatId: currentChatId });
                 input.value = '';
                 adjustTextareaHeight(input);
                 updateUIState(true);
@@ -986,8 +1390,42 @@
         }
         
         function confirmReset() {
-            socket.emit('reset_chat');
+            socket.emit('reset_chat', currentChatId);
             closeModal();
+        }
+        
+        function showPersonalPromptModal() {
+            document.getElementById('personalPromptModal').style.display = 'flex';
+            document.getElementById('personalPromptInput').value = userInfo.personal_prompt || '';
+        }
+        
+        function closePersonalPromptModal() {
+            document.getElementById('personalPromptModal').style.display = 'none';
+        }
+        
+        function savePersonalPrompt() {
+            const personalPrompt = document.getElementById('personalPromptInput').value;
+            
+            fetch('/api/update-personal-prompt', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ personal_prompt: personalPrompt })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    userInfo.personal_prompt = personalPrompt;
+                    closePersonalPromptModal();
+                } else {
+                    alert('Fehler beim Speichern des Personal Prompts');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Fehler beim Speichern des Personal Prompts');
+            });
         }
 
         function updateSendButton() {
@@ -1131,7 +1569,7 @@
                 updateSendButton();
                 const modelSelect = document.getElementById('modelSelect');
                 const selectedModel = modelSelect.value;
-                socket.emit('send_message', { message: lastUserMessage, selectedModel });
+                socket.emit('send_message', { message: lastUserMessage, selectedModel, chatId: currentChatId });
                 scrollToBottom();
             }
         }
@@ -1180,6 +1618,72 @@
             textarea.style.height = 'auto';
             textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
         }
+        
+        function updateChatList(chatList) {
+            const chatListElement = document.getElementById('chatList');
+            chatListElement.innerHTML = '';
+            
+            chatList.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+            
+            chatList.forEach(chat => {
+                const chatItem = document.createElement('div');
+                chatItem.className = `chat-item ${chat.id === currentChatId ? 'active' : ''}`;
+                chatItem.innerHTML = `
+                    <div class="chat-name" title="${chat.name}">${chat.name}</div>
+                    <div class="chat-actions">
+                        <button class="chat-action-btn" onclick="deleteChat('${chat.id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                
+                chatItem.addEventListener('click', (e) => {
+                    if (!e.target.closest('.chat-action-btn')) {
+                        socket.emit('load_chat', chat.id);
+                    }
+                });
+                
+                chatListElement.appendChild(chatItem);
+            });
+        }
+        
+        function deleteChat(chatId) {
+            if (confirm('Möchten Sie diesen Chat wirklich löschen?')) {
+                socket.emit('delete_chat', chatId);
+            }
+        }
+        
+        function createNewChat() {
+            socket.emit('create_chat');
+        }
+        
+        function toggleAccountDropdown() {
+            const dropdown = document.getElementById('accountDropdown');
+            dropdown.classList.toggle('open');
+        }
+        
+        function updateTokenDisplay() {
+            if (userInfo) {
+                document.getElementById('usernameDisplay').textContent = userInfo.username;
+                document.getElementById('tokenDisplay').textContent = `Tokens: ${userInfo.tokens_remaining}/${userInfo.max_tokens}`;
+            }
+        }
+        
+        function loadUserInfo() {
+            fetch('/api/userinfo')
+                .then(response => response.json())
+                .then(data => {
+                    userInfo = data;
+                    updateTokenDisplay();
+                })
+                .catch(error => {
+                    console.error('Fehler beim Laden der Benutzerinformationen:', error);
+                });
+        }
+        
+        function logout() {
+            window.location.href = '/logout';
+        }
 
         // Event Listeners
         document.getElementById('messageInput').addEventListener('input', function() {
@@ -1187,12 +1691,20 @@
         });
 
         document.getElementById('resetChatBtn').addEventListener('click', showResetConfirmation);
+        document.getElementById('newChatBtn').addEventListener('click', createNewChat);
+        document.getElementById('accountToggle').addEventListener('click', toggleAccountDropdown);
+        document.getElementById('personalPromptBtn').addEventListener('click', showPersonalPromptModal);
+        document.getElementById('logoutBtn').addEventListener('click', logout);
+        document.getElementById('toggleSidebarBtn').addEventListener('click', () => {
+            document.getElementById('chatSidebar').classList.toggle('open');
+        });
 
         // Initialisierung
         window.addEventListener('load', () => {
             document.getElementById('messageInput').focus();
-            socket.emit('load_chat');
+            socket.emit('load_chat', currentChatId);
             adjustTextareaHeight(document.getElementById('messageInput'));
+            loadUserInfo();
         });
 
         // ESC zum Schließen der HTML Preview
@@ -1200,6 +1712,20 @@
             if (event.key === 'Escape') {
                 closeHtmlPreview();
                 closeModal();
+                closePersonalPromptModal();
+                
+                // Account-Dropdown schließen
+                document.getElementById('accountDropdown').classList.remove('open');
+            }
+        });
+        
+        // Klick außerhalb schließt Account-Dropdown
+        document.addEventListener('click', (event) => {
+            const accountMenu = document.getElementById('accountToggle');
+            const dropdown = document.getElementById('accountDropdown');
+            
+            if (!accountMenu.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.remove('open');
             }
         });
     </script>
