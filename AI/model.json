@@ -1,0 +1,5 @@
+{
+  "qwen2.5-coder:0.5b": "Qwen Coder",
+  "deepseek-r1:1.5b": "DeepSeek R1",
+  "llama3.2:3b": "Lama3" // als erste immer das Model hier halt llama danach der Display Name denn mann im Web Sieht
+}
