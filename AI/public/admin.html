@@ -18,6 +18,7 @@
             --accent: #7c3aed;
             --error: #f85149;
             --success: #3fb950;
+            --warning: #d29922;
         }
 
         * {
@@ -30,11 +31,11 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
             background: var(--background);
             color: var(--text);
-            height: 100vh;
+            min-height: 100vh;
         }
 
         .admin-container {
-            max-width: 1000px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -43,44 +44,107 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 24px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid var(--border);
+            margin-bottom: 32px;
+            padding: 20px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
         }
 
         .admin-title {
-            font-size: 24px;
-            font-weight: 600;
+            font-size: 28px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .admin-title i {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 20px;
         }
 
         .admin-nav {
             display: flex;
-            gap: 16px;
+            gap: 12px;
         }
 
         .nav-btn {
             background: var(--surface-light);
             color: var(--text);
             border: 1px solid var(--border);
-            padding: 8px 16px;
-            border-radius: 6px;
+            padding: 10px 16px;
+            border-radius: 8px;
             cursor: pointer;
             text-decoration: none;
             font-size: 14px;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
+            transition: all 0.2s ease;
         }
 
         .nav-btn:hover {
             background: var(--primary);
             color: white;
+            border-color: var(--primary);
         }
 
-        .admin-content {
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+        }
+
+        .stat-icon.cpu { background: linear-gradient(135deg, #ff6b6b, #ee5a24); }
+        .stat-icon.memory { background: linear-gradient(135deg, #4834d4, #686de0); }
+        .stat-icon.users { background: linear-gradient(135deg, #00d2d3, #01a3a4); }
+        .stat-icon.uptime { background: linear-gradient(135deg, #ff9ff3, #f368e0); }
+
+        .stat-info {
+            flex: 1;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .main-content {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 24px;
+            gap: 32px;
         }
 
         .card {
@@ -90,10 +154,39 @@
             padding: 24px;
         }
 
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
         .card-title {
-            font-size: 18px;
-            margin-bottom: 16px;
+            font-size: 20px;
+            font-weight: 600;
             color: var(--text);
+        }
+
+        .add-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .add-btn:hover {
+            background: var(--primary-hover);
+            transform: scale(1.05);
         }
 
         .form-group {
@@ -102,36 +195,27 @@
 
         .form-group label {
             display: block;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             color: var(--text-secondary);
             font-size: 14px;
+            font-weight: 500;
         }
 
-        .form-group input,
-        .form-group select {
+        .form-group input {
             width: 100%;
             background: var(--surface-light);
             border: 1px solid var(--border);
             border-radius: 8px;
-            padding: 10px 12px;
+            padding: 12px;
             color: var(--text);
             font-size: 14px;
+            transition: border-color 0.2s ease;
         }
 
-        .form-group input:focus,
-        .form-group select:focus {
+        .form-group input:focus {
             outline: none;
             border-color: var(--primary);
-        }
-
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .checkbox-group input {
-            width: auto;
+            box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.1);
         }
 
         .submit-btn {
@@ -139,10 +223,12 @@
             color: white;
             border: none;
             border-radius: 8px;
-            padding: 10px 16px;
+            padding: 12px 20px;
             font-size: 14px;
+            font-weight: 500;
             cursor: pointer;
-            margin-top: 8px;
+            transition: all 0.2s ease;
+            width: 100%;
         }
 
         .submit-btn:hover {
@@ -151,29 +237,43 @@
 
         .user-list {
             list-style: none;
-            margin-top: 16px;
+            max-height: 400px;
+            overflow-y: auto;
         }
 
         .user-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px;
+            padding: 16px;
             border-bottom: 1px solid var(--border);
+            transition: background 0.2s ease;
+        }
+
+        .user-item:hover {
+            background: var(--surface-light);
+        }
+
+        .user-item:last-child {
+            border-bottom: none;
         }
 
         .user-info {
             display: flex;
             flex-direction: column;
+            gap: 4px;
         }
 
         .user-name {
-            font-weight: 500;
+            font-weight: 600;
+            font-size: 16px;
         }
 
         .user-stats {
             font-size: 12px;
             color: var(--text-secondary);
+            display: flex;
+            gap: 12px;
         }
 
         .user-actions {
@@ -182,99 +282,284 @@
         }
 
         .action-btn {
-            background: var(--surface-light);
-            color: var(--text-secondary);
-            border: 1px solid var(--border);
-            padding: 6px 10px;
+            background: var(--error);
+            color: white;
+            border: none;
+            padding: 8px 12px;
             border-radius: 6px;
             cursor: pointer;
             font-size: 12px;
+            transition: all 0.2s ease;
         }
 
         .action-btn:hover {
-            background: var(--primary);
-            color: white;
+            background: #dc2626;
+            transform: scale(1.05);
         }
 
         .message {
-            padding: 12px;
-            border-radius: 6px;
+            padding: 12px 16px;
+            border-radius: 8px;
             margin-bottom: 16px;
             display: none;
+            align-items: center;
+            gap: 8px;
         }
 
         .message.success {
             background: rgba(63, 185, 80, 0.1);
             border: 1px solid var(--success);
             color: var(--success);
-            display: block;
+            display: flex;
         }
 
         .message.error {
             background: rgba(248, 81, 73, 0.1);
             border: 1px solid var(--error);
             color: var(--error);
-            display: block;
+            display: flex;
+        }
+
+        .user-form {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .user-form.show {
+            display: flex;
+        }
+
+        .form-modal {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .form-modal h3 {
+            margin-bottom: 20px;
+            font-size: 20px;
+            color: var(--text);
+        }
+
+        .form-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .cancel-btn {
+            background: var(--surface-light);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .cancel-btn:hover {
+            background: var(--border);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--surface-light);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-fill.cpu {
+            background: linear-gradient(90deg, #ff6b6b, #ee5a24);
+        }
+
+        .progress-fill.memory {
+            background: linear-gradient(90deg, #4834d4, #686de0);
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
     <div class="admin-container">
         <div class="admin-header">
-            <h1 class="admin-title">Admin Panel</h1>
+            <h1 class="admin-title">
+                <i class="fas fa-shield-alt"></i>
+                Admin Dashboard
+            </h1>
             <div class="admin-nav">
                 <a href="/" class="nav-btn">
-                    <i class="fas fa-home"></i> Zur App
+                    <i class="fas fa-comments"></i> Chat App
                 </a>
-                <a href="/logout" class="nav-btn">
-                    <i class="fas fa-sign-out-alt"></i> Abmelden
-                </a>
+                <button class="nav-btn" onclick="refreshData()">
+                    <i class="fas fa-sync-alt"></i> Aktualisieren
+                </button>
             </div>
         </div>
 
-        <div class="admin-content">
+        <!-- System Stats Dashboard -->
+        <div class="dashboard-grid">
+            <div class="stat-card">
+                <div class="stat-icon cpu">
+                    <i class="fas fa-microchip"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-label">CPU Auslastung</div>
+                    <div class="stat-value" id="cpuUsage">0%</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill cpu" id="cpuProgress"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon memory">
+                    <i class="fas fa-memory"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-label">RAM Verbrauch</div>
+                    <div class="stat-value" id="memoryUsage">0 GB</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill memory" id="memoryProgress"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon users">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-label">Aktive Benutzer</div>
+                    <div class="stat-value" id="activeUsers">0</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon uptime">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-label">Server Uptime</div>
+                    <div class="stat-value" id="serverUptime">0h</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- Benutzer erstellen -->
             <div class="card">
-                <h2 class="card-title">Neuen Benutzer erstellen</h2>
+                <div class="card-header">
+                    <h2 class="card-title">Benutzerverwaltung</h2>
+                    <button class="add-btn" onclick="showUserForm()">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
                 <div id="adminMessage" class="message"></div>
-                <form id="createUserForm">
-                    <div class="form-group">
-                        <label for="username">Benutzername</label>
-                        <input type="text" id="username" name="username" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="password">Passwort</label>
-                        <input type="password" id="password" name="password" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="max_tokens">Maximale Tokens pro Tag</label>
-                        <input type="number" id="max_tokens" name="max_tokens" value="1000" required>
-                    </div>
-                    
-                    <div class="form-group checkbox-group">
-                        <input type="checkbox" id="isAdmin" name="isAdmin">
-                        <label for="isAdmin">Administrator</label>
-                    </div>
-                    
-                    <button type="submit" class="submit-btn">Benutzer erstellen</button>
-                </form>
+                <ul class="user-list" id="userList">
+                    <!-- Benutzer werden dynamisch geladen -->
+                </ul>
             </div>
             
+            <!-- Server Informationen -->
             <div class="card">
-                <h2 class="card-title">Benutzerliste</h2>
-                <ul class="user-list" id="userList">
-                    <li class="user-item">
-                        <div class="user-info">
-                            <span class="user-name">Lade Benutzer...</span>
-                        </div>
-                    </li>
-                </ul>
+                <div class="card-header">
+                    <h2 class="card-title">Server Status</h2>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-secondary);">Ollama Status:</span>
+                        <span id="ollamaStatus" style="color: var(--success);">
+                            <i class="fas fa-circle"></i> Verbunden
+                        </span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-secondary);">Verfügbare Modelle:</span>
+                        <span id="modelCount">0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-secondary);">Registrierte Benutzer:</span>
+                        <span id="totalUsers">0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-secondary);">Letzte Aktivität:</span>
+                        <span id="lastActivity">Nie</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Benutzer erstellen Modal -->
+    <div class="user-form" id="userForm">
+        <div class="form-modal">
+            <h3>Neuen Benutzer erstellen</h3>
+            <form id="createUserForm">
+                <div class="form-group">
+                    <label for="username">Benutzername</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Passwort</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="max_tokens">Maximale Tokens pro Tag</label>
+                    <input type="number" id="max_tokens" name="max_tokens" value="1000" required>
+                </div>
+                
+                <div class="form-buttons">
+                    <button type="button" class="cancel-btn" onclick="hideUserForm()">Abbrechen</button>
+                    <button type="submit" class="submit-btn">Benutzer erstellen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
+        let systemStatsInterval;
+
+        // Benutzer-Form anzeigen/verstecken
+        function showUserForm() {
+            document.getElementById('userForm').classList.add('show');
+        }
+
+        function hideUserForm() {
+            document.getElementById('userForm').classList.remove('show');
+            document.getElementById('createUserForm').reset();
+        }
+
+        // Benutzer erstellen
         document.getElementById('createUserForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -282,8 +567,7 @@
             const data = {
                 username: formData.get('username'),
                 password: formData.get('password'),
-                max_tokens: formData.get('max_tokens'),
-                isAdmin: formData.get('isAdmin') ? 'on' : ''
+                max_tokens: formData.get('max_tokens')
             };
             
             try {
@@ -298,47 +582,157 @@
                 const messageEl = document.getElementById('adminMessage');
                 
                 if (response.ok) {
-                    messageEl.textContent = 'Benutzer erfolgreich erstellt';
+                    messageEl.innerHTML = '<i class="fas fa-check"></i> Benutzer erfolgreich erstellt';
                     messageEl.className = 'message success';
-                    e.target.reset();
+                    hideUserForm();
                     loadUsers();
+                    setTimeout(() => messageEl.style.display = 'none', 3000);
                 } else {
-                    const error = await response.text();
-                    messageEl.textContent = error;
+                    const error = await response.json();
+                    messageEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + error.error;
                     messageEl.className = 'message error';
+                    setTimeout(() => messageEl.style.display = 'none', 5000);
                 }
             } catch (error) {
                 const messageEl = document.getElementById('adminMessage');
-                messageEl.textContent = 'Fehler beim Erstellen des Benutzers';
+                messageEl.innerHTML = '<i class="fas fa-times"></i> Fehler beim Erstellen des Benutzers';
                 messageEl.className = 'message error';
+                setTimeout(() => messageEl.style.display = 'none', 5000);
             }
         });
 
+        // Benutzer laden
         async function loadUsers() {
             try {
-                // In einer echten Implementierung würden wir einen API-Endpunkt haben
-                // Für dieses Beispiel zeigen wir eine Platzhalternachricht
-                document.getElementById('userList').innerHTML = `
-                    <li class="user-item">
+                const response = await fetch('/admin/users');
+                const users = await response.json();
+                
+                const userListElement = document.getElementById('userList');
+                userListElement.innerHTML = '';
+                
+                document.getElementById('totalUsers').textContent = users.length;
+                
+                if (users.length === 0) {
+                    userListElement.innerHTML = '<li style="text-align: center; padding: 20px; color: var(--text-secondary);">Keine Benutzer vorhanden</li>';
+                    return;
+                }
+                
+                users.forEach(user => {
+                    const userItem = document.createElement('li');
+                    userItem.className = 'user-item';
+                    
+                    const tokenPercentage = Math.round((user.tokens_used_today / user.max_tokens) * 100);
+                    const createdDate = new Date(user.created_at).toLocaleDateString('de-DE');
+                    
+                    userItem.innerHTML = `
                         <div class="user-info">
-                            <span class="user-name">Benutzerverwaltung</span>
-                            <span class="user-stats">Benutzer werden server-seitig gespeichert</span>
+                            <div class="user-name">${user.username}</div>
+                            <div class="user-stats">
+                                <span><i class="fas fa-coins"></i> ${user.tokens_used_today}/${user.max_tokens} Tokens (${tokenPercentage}%)</span>
+                                <span><i class="fas fa-calendar"></i> Erstellt: ${createdDate}</span>
+                            </div>
                         </div>
-                    </li>
-                `;
+                        <div class="user-actions">
+                            <button class="action-btn" onclick="deleteUser('${user.username}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                    
+                    userListElement.appendChild(userItem);
+                });
             } catch (error) {
-                document.getElementById('userList').innerHTML = `
-                    <li class="user-item">
-                        <div class="user-info">
-                            <span class="user-name">Fehler beim Laden der Benutzer</span>
-                        </div>
-                    </li>
-                `;
+                console.error('Fehler beim Laden der Benutzer:', error);
             }
         }
 
-        // Beim Laden der Seite Benutzer laden
-        document.addEventListener('DOMContentLoaded', loadUsers);
+        // Benutzer löschen
+        async function deleteUser(username) {
+            if (!confirm(`Möchten Sie den Benutzer "${username}" wirklich löschen?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/admin/delete-user/${username}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    const messageEl = document.getElementById('adminMessage');
+                    messageEl.innerHTML = '<i class="fas fa-check"></i> Benutzer erfolgreich gelöscht';
+                    messageEl.className = 'message success';
+                    setTimeout(() => messageEl.style.display = 'none', 3000);
+                    loadUsers();
+                } else {
+                    const error = await response.json();
+                    alert('Fehler beim Löschen: ' + error.error);
+                }
+            } catch (error) {
+                alert('Fehler beim Löschen des Benutzers');
+            }
+        }
+
+        // System-Statistiken laden
+        async function loadSystemStats() {
+            try {
+                const response = await fetch('/admin/system-stats');
+                const stats = await response.json();
+                
+                // CPU
+                document.getElementById('cpuUsage').textContent = `${stats.cpu.toFixed(1)}%`;
+                document.getElementById('cpuProgress').style.width = `${Math.min(stats.cpu, 100)}%`;
+                
+                // Memory
+                const memoryPercent = (stats.memory.used / stats.memory.total) * 100;
+                document.getElementById('memoryUsage').textContent = `${stats.memory.used.toFixed(1)} GB / ${stats.memory.total.toFixed(1)} GB`;
+                document.getElementById('memoryProgress').style.width = `${memoryPercent}%`;
+                
+                // Active Users
+                document.getElementById('activeUsers').textContent = stats.activeUsers;
+                
+                // Uptime
+                const hours = Math.floor(stats.uptime / 3600);
+                const minutes = Math.floor((stats.uptime % 3600) / 60);
+                document.getElementById('serverUptime').textContent = `${hours}h ${minutes}m`;
+                
+                // Update last activity
+                document.getElementById('lastActivity').textContent = new Date().toLocaleTimeString('de-DE');
+                
+            } catch (error) {
+                console.error('Fehler beim Laden der System-Statistiken:', error);
+                // Fallback wenn Stats nicht verfügbar
+                document.getElementById('ollamaStatus').innerHTML = '<i class="fas fa-exclamation-circle" style="color: var(--error);"></i> Nicht verfügbar';
+            }
+        }
+
+        // Daten aktualisieren
+        function refreshData() {
+            loadUsers();
+            loadSystemStats();
+        }
+
+        // ESC zum Schließen der Modals
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                hideUserForm();
+            }
+        });
+
+        // Initialisierung
+        window.addEventListener('load', () => {
+            loadUsers();
+            loadSystemStats();
+            
+            // System-Stats alle 5 Sekunden aktualisieren
+            systemStatsInterval = setInterval(loadSystemStats, 5000);
+        });
+
+        // Cleanup beim Verlassen der Seite
+        window.addEventListener('beforeunload', () => {
+            if (systemStatsInterval) {
+                clearInterval(systemStatsInterval);
+            }
+        });
     </script>
 </body>
 </html>

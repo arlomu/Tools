@@ -1,4 +1,18 @@
 {
+  "1": {
+    "password": "$2b$10$Fmdl66KVyo.gOnuKdz.hwu5zk.ns/zciwPv3r5yLaX9QbLoxiM1Ve",
+    "max_tokens": 1,
+    "tokens_used_today": 39,
+    "personal_prompt": "Du must immer in 1 satzt reden & mein name ist: Geilertest",
+    "created_at": "2025-08-25T08:09:46.697Z"
+  },
+  "2": {
+    "password": "$2b$10$YdERgWqTJwNx.3ebeHLpPugauI2owj2mZa25DAEdRT/fqoceX.MyC",
+    "max_tokens": 1000,
+    "tokens_used_today": 1053,
+    "personal_prompt": "Mein Name ist Max",
+    "created_at": "2025-08-25T08:12:03.241Z"
+  },
   "admin": {
     "password": "$2a$10$X8z5z9z7z6z5z4z3z2z1z0z9z8z7z6z5z4z3z2z1z0z9z8z7z6z5z4z3z2z1",
     "max_tokens": 10000,
@@ -6,5 +20,12 @@
     "isAdmin": true,
     "personal_prompt": "Ich bin der Administrator dieses Systems.",
     "chats": {}
+  },
+  "Test": {
+    "password": "$2b$10$50BOGVSytfPq3hqAAAnOcO4x7UcLkqa/m16QRKdUF4rdSmW4bw2Wy",
+    "max_tokens": 100,
+    "tokens_used_today": 291,
+    "personal_prompt": "",
+    "created_at": "2025-08-25T08:02:11.429Z"
   }
 }

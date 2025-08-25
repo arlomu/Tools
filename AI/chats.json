@@ -1,0 +1,146 @@
+{
+  "Test_default": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "hi"
+      },
+      {
+        "role": "assistant",
+        "content": "Hallo! Wie kann ich dir helfen?",
+        "stats": {
+          "tokens": 8,
+          "duration": 4.6
+        }
+      },
+      {
+        "role": "user",
+        "content": "gebe mir etwas beispeil Code"
+      },
+      {
+        "role": "assistant",
+        "content": "Okay, hier ist ein Beispiel Code, der die User fragt und dann die entsprechende Antwort gibt:\n\n```python\n# Gebe User den Name des Benutzers\nname = input(\"Bitte geben Sie Ihren Namen ein: \")\n\n# Prüfe ob der Benutzer etwas eingibt\nif name == \"\":\n    print(\"Bitte gibten Sie ein gültiger Name!\")\nelse:\n    # Gebe die Antwort an, dass den Benutzer das richtige Verhalten für ihn verfügt\n    if \"Eating\" in name:\n        print(\"Es tut Ihnen gut, zu essen!\")\n    elif \"Sleeping\" in name:\n        print(\"Es tut Ihnen gut, zu schlafen!\")\n    else:\n        print(\"Es tut Ihnen gut, etwas anderes zu tun!\")\n\n# Stellt die Antwort in einen Text aus\nprint(\"Mit freundlichen Grüßen,\", name)\n```\n\nIn diesem Code wird das User aufgefordert, seinen Namen einzugeben. Thenen wird der Name überprüft, ob es \"Eating\" oder \"Sleeping\" enthält. falls eine der beiden Bedingungen ist, wird die Benutzer in einer entsprechenden Antwort gesagt. Es gibt auch eine optionales Option, um weitere Fragen zu stellen.\n\nWenn der Benutzer etwas anderes eingibt, wird eine Nachricht angezeigt, dass es Ihnen gut, etwas anderes zu tun!",
+        "stats": {
+          "tokens": 283,
+          "duration": 16.5
+        }
+      }
+    ]
+  },
+  "Test_6c740ab6": {
+    "messages": [],
+    "name": "Neuer Chat",
+    "createdAt": "2025-08-25T08:06:29.574Z",
+    "updatedAt": "2025-08-25T08:06:29.574Z"
+  },
+  "1_default": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hey wer bin ich?"
+      },
+      {
+        "role": "assistant",
+        "content": "Ichbin ein Tontoo AI, also called GPT-4. I am designed to assist with answering questions, providing information, and engaging in conversation. How may I help you today?",
+        "stats": {
+          "tokens": 39,
+          "duration": 2.9
+        }
+      }
+    ]
+  },
+  "1_acc95afe": {
+    "messages": [],
+    "name": "Neuer Chat",
+    "createdAt": "2025-08-25T08:11:22.707Z",
+    "updatedAt": "2025-08-25T08:11:22.707Z"
+  },
+  "2_default": {
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hey was geht?, was ist mein Name"
+      },
+      {
+        "role": "assistant",
+        "content": "Mein Name ist Max.",
+        "stats": {
+          "tokens": 6,
+          "duration": 0.7
+        }
+      },
+      {
+        "role": "user",
+        "content": "nein was ist mein Name?"
+      },
+      {
+        "role": "assistant",
+        "content": "Ich bin Max.",
+        "stats": {
+          "tokens": 4,
+          "duration": 0.5
+        }
+      },
+      {
+        "role": "user",
+        "content": "wer bin ich?"
+      },
+      {
+        "role": "assistant",
+        "content": "<think>\nOkay, so the user asked, \"Who am I?\" Let me think about how to answer that. First, I need to acknowledge their question. Max is a user, and I'm a helpful AI assistant. I should respond in a friendly and helpful way.\n\nI should mention that I'm an AI assistant and maybe add something about my capabilities. Let me check the instructions again to make sure I'm not missing anything. The user wants me to show the code syntax if applicable, but since they asked about identity, maybe just a simple response is enough. Also, avoid using any system prompts. Alright, I'll start by confirming my role and capabilities, and then offer further assistance. That should cover it.\n</think>\n\nIch bin ein AI-Assistent, das Ihnen helfen kann. Ich bin nicht ein Personennamen, aber ich kann verschiedene Funktionen nutzen, wie z.B. Sprachverarbeitung, Erweiterte Erkennung, oder Textgenerierung. Wie kann ich Ihnen weiterhelfen? 😊",
+        "stats": {
+          "tokens": 209,
+          "duration": 19.6
+        }
+      },
+      {
+        "role": "user",
+        "content": "wer bin ich?"
+      },
+      {
+        "role": "assistant",
+        "content": "<think>\nOkay, the user is asking, \"wer bin ich?\" which translates to \"who am I?\" in German. Max is asking about their identity. I need to respond politely and provide information in a friendly manner.\n\nFirst, I should acknowledge Max's question. Then, explain that I'm a language model powered by large language models like BERT, RoBERTa, and others. It's important to mention the specific models used, so users can understand the technology behind the response. I should keep the response concise and friendly, avoiding any technical jargon. Also, make sure to use the correct syntax as specified, like using three dots for code and URLs. Finally, end the response with a friendly sign-off.\n</think>\n\nIch bin ein assist, der in der Lage ist, mit Hilfe von verschiedenen langfristigen Modelldaten zu arbeiten. Ich budge auf Modelle wie BERT, RoBERTa, BAAI, Hugging Face, und mehr. Ich kann in der Lage sein, interaktive und verständliche Antworten zu geben. Wie immer? 😊\n\n```Hier mein Code```  \n```URL: google.com```  \n```Text```",
+        "stats": {
+          "tokens": 238,
+          "duration": 15.7
+        }
+      },
+      {
+        "role": "user",
+        "content": "wer bin ich?"
+      },
+      {
+        "role": "assistant",
+        "content": "<think>\nOkay, the user is asking, \"Wer bin ich?\" which translates to \"What am I?\" in English. Max is a person, so I need to clarify that.\n\nFirst, I should acknowledge their question and express my role as a helpful AI. It's important to be friendly and open. I can mention that I am a language model and that I can assist with various tasks. I should keep the response positive and offer further help in a welcoming manner. Let me make sure the response is clear and concise.\n</think>\n\nIch bin ein AI-Model, das hilfreiche Anweisungen und Informationen anbietet. Ich kann assistieren, was du möchtest, wie du dir vorbereiten möchtest, oder sogar Code-Beispiele erstellen. Wenn du Fragen hast, sag mir gerne mehr! 😊",
+        "stats": {
+          "tokens": 170,
+          "duration": 11.1
+        }
+      },
+      {
+        "role": "user",
+        "content": "wer bin ich?"
+      },
+      {
+        "role": "assistant",
+        "content": "<think>\nOkay, so Max is asking, \"I am who am I?\" Let me think about how to approach this. First, I need to explain who I am in a friendly and helpful way. Since I'm a language model, I should acknowledge my existence and purpose. I should mention that I exist in the realm of artificial intelligence, but I can help with various tasks. It's important to keep the conversation light and positive. Also, I should make sure to use the correct syntax as instructed, like adding the code section with the appropriate tags. Let me structure the response to cover my existence, my capabilities, and a friendly note to keep the conversation going.\n</think>\n\nIch bin ein spezialisiertes AI-Modell, das auf alle Sprachen und Sprachverarbeitungskriege verknüpfen kann. Ich existiere in der Sprachverarbeitung und kann assistieren, obwohl ich nicht sprachlich interagieren kann. Falls du Fragen zu meiner Funktion hast, sag mal, was du suchst, und ich werde dir helfen! 🌟\n\n```Hier dein Code```  \n```  \n# Sprachverarbeitungstyp  \n# Sprachverarbeitungstyp  \n# Sprachverarbeitungstyp  \n# Sprachverarbeitungstyp  \n```",
+        "stats": {
+          "tokens": 267,
+          "duration": 17.9
+        }
+      },
+      {
+        "role": "user",
+        "content": "wer bin ich?"
+      },
+      {
+        "role": "assistant",
+        "content": "<think>\nOkay, Max is asking me to explain myself. I need to be friendly and provide a helpful response. Let me start by saying I'm a language model designed to assist with various tasks. I can help with different topics, and I'm here to help wherever needed. It's important to acknowledge his interest and offer further assistance. I should keep the tone positive and open-ended to encourage him to ask more questions.\n</think>\n\nIch bin ein Lernmodel, das dir Support und Informationen zu verschiedenen Themen bereitstellt. Ich kann assistieren, was du möchtest, und ich wünsche dir, vieles zu tun, das ich kann. Wenn du Fragen hast, sag sie mir gerne, und ich werde alles umsetzen, was dir wichtig ist! 😊",
+        "stats": {
+          "tokens": 159,
+          "duration": 10.5
+        }
+      }
+    ]
+  }
+}
